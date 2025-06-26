@@ -1,15 +1,20 @@
-package main
+package tests
 
 import (
+	"os"
 	"testing"
 )
 
-func TestMain(t *testing.T) {
-	t.Run("title", func(t *testing.T) {
-		// t.Errorf("error")
-	})
-}
+// WARN: all tests must be in this folder, no subfolder authorized
+func TestMain(m *testing.M) {
+	// before tests
+	os.Setenv("APP_GO_TEST", "true")
 
-//t.Run("title", func(t *testing.T) {
-//	t.Errorf("error")
-//})
+	// run tests
+	exitVal := m.Run()
+
+	// after tests
+
+	// exit value from tests
+	os.Exit(exitVal)
+}

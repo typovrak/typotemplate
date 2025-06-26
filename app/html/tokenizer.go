@@ -4,6 +4,8 @@ import (
 	"bytes"
 )
 
+// WARN: je pars du principe que un nom d'élément HTML est un alpha numérique.
+
 type Token struct {
 	Type  TokenType
 	Value string
@@ -12,58 +14,87 @@ type Token struct {
 type TokenType int
 
 const (
-	TokenTagOpen TokenType = iota
-	TokenTagClose
+	TokenTagOpenChar TokenType = iota
+	TokenTagName
+	TokenTagCloseChar
 
 	TokenAttributeKey
-	TokenAttributeOperator
+	TokenAttributeOperatorChar
 
-	TokenAttributeOpen
+	TokenAttributeOpenChar
 	TokenAttributeValue
-	TokenAttributeClose
+	TokenAttributeCloseChar
 
 	TokenText
 )
 
+func isCharAlphanumeric(char byte) bool {
+	return (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')
+}
+
 func Tokenizer(html string) []Token {
 	var tokens []Token
 	var buffer bytes.Buffer
-	inTag := false
+
+	isBufferInTag := false
+	isBufferAlphanumeric := false
 
 	for i := 0; i < len(html); i++ {
 		char := html[i]
 
-		// *buffer == < -> TokenTagOpen
-		// *buffer == > -> TokenTagClose
+		// *buffer == < -> TokenTagOpenChar
+		// *buffer == > -> TokenTagCloseChar
 
-		// *buffer == _  && inTag == false -> continue
+		// *buffer == _  && isBufferInTag == false -> continue
 
-		// buffer == string && inTag && inAttribute == false -> TokenAttributeKey
-		// buffer == = && inTag == true -> TokenAttributeOperator
-		// buffer == "' && inTag == true && pas de \ avant -> TokenAttributeOpen TokenAttributeClose
+		// buffer == string && isBufferInTag && inAttribute == false -> TokenAttributeKey
+		// buffer == = && isBufferInTag == true -> TokenAttributeOperator
+		// buffer == "' && isBufferInTag == true && pas de \ avant -> TokenAttributeOpen TokenAttributeClose
 
 		// *else -> TokenText
 
-		if char == ' ' && inTag == false {
+		if char == ' ' && !isBufferInTag {
 			buffer.WriteByte(char)
 			continue
 		}
 
 		if char == '<' {
-			tokens = append(tokens, Token{Type: TokenTagOpen, Value: string(char)})
+			tokens = append(tokens, Token{Type: TokenTagOpenChar, Value: string(char)})
 			buffer.Reset()
-			inTag = true
+			isBufferInTag = true
 			continue
 		}
 
 		if char == '>' {
-			tokens = append(tokens, Token{Type: TokenTagClose, Value: string(char)})
+			tokens = append(tokens, Token{Type: TokenTagCloseChar, Value: string(char)})
 			buffer.Reset()
-			inTag = false
+			isBufferInTag = false
 			continue
 		}
 
-		buffer.WriteByte(char)
+		if char == '/' && len(buffer.String()) == 0 &&
+			len(tokens)-1 >= 0 && tokens[len(tokens)-1].Type == TokenTagOpenChar && tokens[len(tokens)-1].Value == "<" {
+
+			tokens = append(tokens, Token{Type: TokenTagOpenChar, Value: string(char)})
+			buffer.Reset()
+			continue
+		}
+
+		if char != ' ' && isBufferInTag {
+			buffer.WriteByte(char)
+
+			if isBufferAlphanumeric {
+				isBufferAlphanumeric = isCharAlphanumeric(char)
+			}
+
+			continue
+		}
+
+		//if char == ' ' && len(buffer.String()) > 0 {
+		//	tokens = append(tokens, Token{Type: TokenTagName, Value: buffer.String()})
+		//	buffer.Reset()
+		//	continue
+		//}
 	}
 
 	return tokens

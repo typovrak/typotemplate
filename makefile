@@ -1,21 +1,19 @@
-CURRENT_DATE=$(shell date +%Y-%m-%dT%H:%M:%S%z)
-COVERAGE_FILE=./coverage.txt
+.PHONY: docker-down
+docker-down:
+	docker compose down
 
-.PHONY: test
-test:
-	@go test ./... -v
+.PHONY: docker-up
+docker-up:
+	docker compose up
 
-race:
-	@go test -race ./... -v
+.PHONY: docker-restart
+docker-restart:
+	docker compose down && docker compose up
 
-.PHONY: coverage
-coverage:
-	@go test ./... -v -coverprofile=$(COVERAGE_FILE) -coverpkg=./...
+.PHONY: leaks
+leaks:
+	gitleaks git -v
 
-.PHONY: show-coverage
-show-coverage:
-	@go tool cover -html=$(COVERAGE_FILE)
-
-.PHONY: fmt
-fmt:
-	@gofmt -l .
+.PHONY: trivy
+trivy:
+	trivy image typotemplate-app:latest

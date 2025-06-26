@@ -243,6 +243,6 @@ func minify(tokens []Token) string {
 	return builder.String()
 }
 
-func main() {
-	fmt.Println(MinifyHTML(PageIndex()))
-}
+//func main() {
+//	fmt.Println(MinifyHTML(PageIndex()))
+//}

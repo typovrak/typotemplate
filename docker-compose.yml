@@ -1,0 +1,16 @@
+
+services:
+  app:
+    tty: true
+    container_name: ${APP_CONTAINER}
+    build:
+      context: ./app
+      dockerfile: ./Dockerfile
+    environment:
+      APP_GO_TEST: ${APP_GO_TEST}
+    #restart: unless-stopped
+    restart: no
+    volumes:
+      - type: bind
+        source: ./app
+        target: /app

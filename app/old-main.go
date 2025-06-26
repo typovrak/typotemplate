@@ -136,7 +136,7 @@ func parseTag(tokens []Token, buffer string) []Token {
 	delimiter := ""
 	currentString := ""
 
-	// DOC: RFC attributes delimiter can only be " or ' (or > for ending)
+	// DOC: RFC attributes delimiter can only be " or '
 	// [Page 14] https://www.ietf.org/rfc/rfc1866.txt
 	for i := 0; i < len(buffer); i++ {
 		char := string(buffer[i])
@@ -162,7 +162,7 @@ func parseTag(tokens []Token, buffer string) []Token {
 
 		// end delimiter
 		// based on RFC HTML attributes delimiters
-		if char == "\"" || char == "'" || char == ">" {
+		if char == "\"" || char == "'" {
 			delimiter = ""
 			currentString += "\""
 			continue

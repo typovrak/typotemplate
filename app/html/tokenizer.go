@@ -2,130 +2,65 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 )
 
-// WARN: je pars du principe que un nom d'élément HTML est un alpha numérique.
-
-type Token struct {
-	Type  TokenType
-	Value string
-}
-
-type TokenType int
-
-const (
-	TokenTagOpenChar TokenType = iota
-	TokenTagName
-	TokenTagCloseChar
-
-	TokenAttributeKey
-	TokenAttributeOperatorChar
-
-	TokenAttributeOpenChar
-	TokenAttributeValue
-	TokenAttributeCloseChar
-
-	TokenText
-)
-
-func IsCharAlphanumeric(char byte) bool {
-	return (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9')
-}
-
-func addToken(tokens *[]Token, buffer *bytes.Buffer, tokenType TokenType, tokenValue string) {
-	*tokens = append(*tokens, Token{Type: tokenType, Value: tokenValue})
-	buffer.Reset()
-}
-
-func Tokenizer(html string) []Token {
-	var tokens []Token
+func Minifier(html string) string {
 	var buffer bytes.Buffer
+	buffer.Grow(len(html))
 
-	isBufferInTag := false
-	isBufferAlphanumeric := false
+	var (
+		char     byte
+		lastChar byte
 
+		isBufferInTag bool
+		bufBytes      []byte
+		bufLen        int
+	)
+
+	// isBufferInComment := true
+
+	// TODO: gérer les commentaires
+	// TODO: gérer le doctype
+
+	// WARN: previous characters = use buffer
+	// WARN: next characters = use html
 	for i := 0; i < len(html); i++ {
-		if len(buffer.String()) == 0 {
-			isBufferAlphanumeric = true
-		}
-
-		char := html[i]
-
-		// *buffer == < -> TokenTagOpenChar
-		// *buffer == > -> TokenTagCloseChar
-
-		// *buffer == _  && isBufferInTag == false -> continue
-
-		// buffer == string && isBufferInTag && inAttribute == false -> TokenAttributeKey
-		// buffer == = && isBufferInTag == true -> TokenAttributeOperator
-		// buffer == "' && isBufferInTag == true && pas de \ avant -> TokenAttributeOpen TokenAttributeClose
-
-		// *else -> TokenText
+		char = html[i]
+		bufBytes = buffer.Bytes()
+		bufLen = len(bufBytes)
 
 		if char == '<' {
-			if len(buffer.String()) > 0 {
-				if !isBufferInTag {
-					addToken(&tokens, &buffer, TokenText, buffer.String())
-				} else {
-					// TODO: need to add buffer
-					fmt.Println("not store in a buffer")
-				}
+			isBufferInTag = true
+		}
+
+		if isBufferInTag {
+			// remove double space in tag
+			if (lastChar == ' ' && char == ' ') || (i+1 <= len(html)-1 && char == ' ' && html[i+1] == ' ') {
+				continue
 			}
 
-			addToken(&tokens, &buffer, TokenTagOpenChar, string(char))
-			isBufferInTag = true
-			continue
+			// remove space at HTML tag start
+			// TODO: gérer </
+			if (lastChar == '<' && char == ' ') ||
+				(2 < bufLen && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
+				continue
+			}
+
+			// remove space at HTML tag end
+			if i+1 <= len(html)-1 && char == ' ' && html[i+1] == '>' {
+				continue
+			}
+
+		} else {
 		}
 
 		if char == '>' {
-			if len(buffer.String()) > 0 {
-				if isBufferAlphanumeric && isBufferInTag {
-					addToken(&tokens, &buffer, TokenTagName, buffer.String())
-				} else {
-					// TODO: need to add buffer
-					fmt.Println("not store in a buffer")
-				}
-			}
-
-			addToken(&tokens, &buffer, TokenTagCloseChar, string(char))
 			isBufferInTag = false
-			continue
 		}
 
-		if char == '/' && len(buffer.String()) == 0 &&
-			len(tokens)-1 >= 0 && tokens[len(tokens)-1].Type == TokenTagOpenChar && tokens[len(tokens)-1].Value == "<" {
-			// TODO: need to do something with the previous non empty buffer
-			fmt.Println("not store in a buffer")
-
-			addToken(&tokens, &buffer, TokenTagOpenChar, string(char))
-			continue
-		}
-
-		if char != ' ' && isBufferInTag {
-			if isBufferInTag && isBufferAlphanumeric {
-				isBufferAlphanumeric = IsCharAlphanumeric(char)
-			}
-
-			buffer.WriteByte(char)
-			continue
-		}
-
-		if !isBufferInTag {
-			// no need to manage alphanumeric because not in tag
-			buffer.WriteByte(char)
-			continue
-		}
-
-		// TODO: need to add buffer
-		fmt.Println("not store in a buffer")
-
-		//if char == ' ' && len(buffer.String()) > 0 {
-		//	tokens = append(tokens, Token{Type: TokenTagName, Value: buffer.String()})
-		//	buffer.Reset()
-		//	continue
-		//}
+		buffer.WriteByte(char)
+		lastChar = char
 	}
 
-	return tokens
+	return buffer.String()
 }

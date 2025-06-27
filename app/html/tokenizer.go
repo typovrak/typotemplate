@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"fmt"
 )
 
 // WARN: je pars du principe que un nom d'élément HTML est un alpha numérique.
@@ -62,16 +63,13 @@ func Tokenizer(html string) []Token {
 
 		// *else -> TokenText
 
-		if char == ' ' && !isBufferInTag {
-			// no need to manage alphanumeric because not in tag
-			buffer.WriteByte(char)
-			continue
-		}
-
 		if char == '<' {
 			if len(buffer.String()) > 0 {
-				if isBufferAlphanumeric && !isBufferInTag {
-					addToken(&tokens, &buffer, TokenTagName, buffer.String())
+				if !isBufferInTag {
+					addToken(&tokens, &buffer, TokenText, buffer.String())
+				} else {
+					// TODO: need to add buffer
+					fmt.Println("not store in a buffer")
 				}
 			}
 
@@ -84,6 +82,9 @@ func Tokenizer(html string) []Token {
 			if len(buffer.String()) > 0 {
 				if isBufferAlphanumeric && isBufferInTag {
 					addToken(&tokens, &buffer, TokenTagName, buffer.String())
+				} else {
+					// TODO: need to add buffer
+					fmt.Println("not store in a buffer")
 				}
 			}
 
@@ -95,6 +96,7 @@ func Tokenizer(html string) []Token {
 		if char == '/' && len(buffer.String()) == 0 &&
 			len(tokens)-1 >= 0 && tokens[len(tokens)-1].Type == TokenTagOpenChar && tokens[len(tokens)-1].Value == "<" {
 			// TODO: need to do something with the previous non empty buffer
+			fmt.Println("not store in a buffer")
 
 			addToken(&tokens, &buffer, TokenTagOpenChar, string(char))
 			continue
@@ -108,6 +110,15 @@ func Tokenizer(html string) []Token {
 			buffer.WriteByte(char)
 			continue
 		}
+
+		if !isBufferInTag {
+			// no need to manage alphanumeric because not in tag
+			buffer.WriteByte(char)
+			continue
+		}
+
+		// TODO: need to add buffer
+		fmt.Println("not store in a buffer")
 
 		//if char == ' ' && len(buffer.String()) > 0 {
 		//	tokens = append(tokens, Token{Type: TokenTagName, Value: buffer.String()})

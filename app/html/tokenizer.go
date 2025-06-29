@@ -2,47 +2,125 @@ package html
 
 import (
 	"bytes"
+	"fmt"
 )
 
+//func Header() string {
+//	return "<a title=\"test\">test</a>"
+//}
+
+func writeByteToBuf(buf *bytes.Buffer, lastChar *byte, value byte) {
+	buf.WriteByte(value)
+	*lastChar = value
+}
+
+func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
+	buf.WriteString(value)
+	*lastChar = value[len(value)-1]
+}
+
 func Minifier(html string) string {
-	var buffer bytes.Buffer
-	buffer.Grow(len(html))
+	var buf bytes.Buffer
+	buf.Grow(len(html))
 
 	var (
-		char     byte
-		lastChar byte
+		char             byte
+		lastChar         byte
+		bufAttrSeparator byte
 
-		isBufferInTag bool
-		bufBytes      []byte
-		bufLen        int
+		isBufInTag  bool
+		isBufInAttr bool
+		bufBytes    []byte
+		bufLen      int
 	)
+
+	entityEncoderDoubleQuote := "&quot;"
 
 	// isBufferInComment := true
 
 	// TODO: gérer les commentaires
 	// TODO: gérer le doctype
 
-	// WARN: previous characters = use buffer
+	// WARN: previous characters = use buf
 	// WARN: next characters = use html
 	for i := 0; i < len(html); i++ {
 		char = html[i]
-		bufBytes = buffer.Bytes()
-		bufLen = len(bufBytes)
+		bufBytes = buf.Bytes()
+		bufLen = buf.Len()
 
 		if char == '<' {
-			isBufferInTag = true
+			isBufInTag = true
+			writeByteToBuf(&buf, &lastChar, char)
+			continue
 		}
 
-		if isBufferInTag {
+		if isBufInTag {
 			// remove double space in tag
 			if (lastChar == ' ' && char == ' ') || (i+1 <= len(html)-1 && char == ' ' && html[i+1] == ' ') {
 				continue
 			}
 
 			// remove space at HTML tag start
-			// TODO: gérer </
 			if (lastChar == '<' && char == ' ') ||
 				(2 < bufLen && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
+				continue
+			}
+
+			// ne pas retirer les espaces à l'intérieur des attributs href, que les trailing
+			// TODO: retirer les \n, \t
+
+			if isBufInAttr {
+				if bufAttrSeparator == 0 {
+					// attribute separator not defined
+					if char == ' ' {
+						continue
+					}
+
+					// only " and ' are allowed
+					if char == '\'' || char == '"' {
+						bufAttrSeparator = char
+						char = '"'
+						writeByteToBuf(&buf, &lastChar, char)
+						continue
+
+					}
+
+					bufAttrSeparator = ' '
+					writeStrToBuf(&buf, &lastChar, "\""+string(char))
+					continue
+				}
+
+				if bufAttrSeparator != 0 {
+					// remove start trailing space from attribute value
+					if lastChar == '"' && char == ' ' {
+						continue
+					}
+
+					// remove end trailing space from attribute value
+					if i+1 <= len(html)-1 && char == ' ' && html[i+1] == bufAttrSeparator {
+						continue
+					}
+
+					// attribute end value
+					if bufAttrSeparator == char {
+						bufAttrSeparator = 0
+						char = '"'
+						isBufInAttr = false
+						writeByteToBuf(&buf, &lastChar, char)
+						continue
+					}
+
+					// replace all " in attribute value with entity encoded value
+					if bufAttrSeparator == '\'' && char == '"' {
+						writeStrToBuf(&buf, &lastChar, entityEncoderDoubleQuote)
+						continue
+					}
+				}
+
+				// attribute value declaration
+			} else if char == '=' {
+				isBufInAttr = true
+				writeByteToBuf(&buf, &lastChar, char)
 				continue
 			}
 
@@ -50,17 +128,23 @@ func Minifier(html string) string {
 			if i+1 <= len(html)-1 && char == ' ' && html[i+1] == '>' {
 				continue
 			}
-
-		} else {
 		}
 
 		if char == '>' {
-			isBufferInTag = false
+			if bufAttrSeparator != 0 {
+				bufAttrSeparator = 0
+				isBufInAttr = false
+				writeByteToBuf(&buf, &lastChar, '"')
+			}
+
+			isBufInTag = false
+			writeByteToBuf(&buf, &lastChar, char)
+			continue
 		}
 
-		buffer.WriteByte(char)
-		lastChar = char
+		fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator)
+		writeByteToBuf(&buf, &lastChar, char)
 	}
 
-	return buffer.String()
+	return buf.String()
 }

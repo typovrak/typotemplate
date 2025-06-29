@@ -68,6 +68,60 @@ func TestHTMLMinifier(t *testing.T) {
 		expected := "<a href=\"https://mscholz.dev\"></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_9", func(t *testing.T) {
+		raw := "<a  href=\" https://mscholz.dev/blog test coucou \"></a>"
+		expected := "<a href=\"https://mscholz.dev/blog test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_10", func(t *testing.T) {
+		raw := "<a  title=\"test\"></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_11", func(t *testing.T) {
+		raw := "<a  title='test'></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_12", func(t *testing.T) {
+		raw := "<a  title='  test '></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_13", func(t *testing.T) {
+		raw := "<a  title=test></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_14", func(t *testing.T) {
+		raw := "<a  title='test \" '></a>"
+		expected := "<a title=\"test &quot;\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_15", func(t *testing.T) {
+		raw := "<a  title=test   ></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_16", func(t *testing.T) {
+		raw := "<a  title=test ></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_17", func(t *testing.T) {
+		raw := "<a  title= test ></a>"
+		expected := "<a title=\"test\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
 }
 
 //t.Run("title", func(t *testing.T) {

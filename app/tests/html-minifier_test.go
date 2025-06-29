@@ -122,6 +122,48 @@ func TestHTMLMinifier(t *testing.T) {
 		expected := "<a title=\"test\"></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_18", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_19", func(t *testing.T) {
+		raw := "<a  href=\" https://mscholz.dev/blog    test coucou    \"></a>"
+		expected := "<a href=\"https://mscholz.dev/blog    test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_20", func(t *testing.T) {
+		raw := "<a>\r</a>"
+		expected := "<a></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_21", func(t *testing.T) {
+		raw := "<a  href=\" https://mscholz.dev/blog    = test coucou    \"></a>"
+		expected := "<a href=\"https://mscholz.dev/blog    = test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_21", func(t *testing.T) {
+		raw := "<a  href=\" https://mscholz.dev/blog    =  test coucou    \"></a>"
+		expected := "<a href=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
 }
 
 //t.Run("title", func(t *testing.T) {

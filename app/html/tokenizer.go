@@ -2,7 +2,6 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 )
 
 //func Header() string {
@@ -27,11 +26,13 @@ func Minifier(html string) string {
 		char             byte
 		lastChar         byte
 		bufAttrSeparator byte
+		repeatedSpaces   [2]int
 
-		isBufInTag  bool
-		isBufInAttr bool
-		bufBytes    []byte
-		bufLen      int
+		isBufInTag      bool
+		isBufInAttr     bool
+		isBufInHrefAttr bool
+		bufBytes        []byte
+		bufLen          int
 	)
 
 	entityEncoderDoubleQuote := "&quot;"
@@ -40,6 +41,10 @@ func Minifier(html string) string {
 
 	// TODO: gérer les commentaires
 	// TODO: gérer le doctype
+	// TODO: gérer les <script> <style>
+
+	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
+	// TODO: tout paramétrer en bool
 
 	// WARN: previous characters = use buf
 	// WARN: next characters = use html
@@ -48,6 +53,20 @@ func Minifier(html string) string {
 		bufBytes = buf.Bytes()
 		bufLen = buf.Len()
 
+		// count repeated spaces for href attributes
+		repeatedSpaces[0] = repeatedSpaces[1]
+		if char == ' ' {
+			repeatedSpaces[1]++
+		} else {
+			repeatedSpaces[1] = 0
+		}
+
+		// remove line feed, tab and carriage return
+		if char == '\n' || char == '\t' || char == '\r' {
+			continue
+		}
+
+		// start HTML tag
 		if char == '<' {
 			isBufInTag = true
 			writeByteToBuf(&buf, &lastChar, char)
@@ -65,9 +84,6 @@ func Minifier(html string) string {
 				(2 < bufLen && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
 				continue
 			}
-
-			// ne pas retirer les espaces à l'intérieur des attributs href, que les trailing
-			// TODO: retirer les \n, \t
 
 			if isBufInAttr {
 				if bufAttrSeparator == 0 {
@@ -101,24 +117,40 @@ func Minifier(html string) string {
 						continue
 					}
 
+					// replace all " in attribute value with entity encoded value
+					if bufAttrSeparator == '\'' && char == '"' {
+						writeStrToBuf(&buf, &lastChar, entityEncoderDoubleQuote)
+						continue
+					}
+					// add for href attritube value the repeated spaces
+					if isBufInHrefAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
+						spacesToAdd := ""
+						for i := 0; i < repeatedSpaces[0]-1; i++ {
+							spacesToAdd += " "
+						}
+
+						spacesToAdd += string(char)
+						writeStrToBuf(&buf, &lastChar, spacesToAdd)
+						continue
+					}
+
 					// attribute end value
 					if bufAttrSeparator == char {
 						bufAttrSeparator = 0
 						char = '"'
 						isBufInAttr = false
+						isBufInHrefAttr = false
 						writeByteToBuf(&buf, &lastChar, char)
-						continue
-					}
-
-					// replace all " in attribute value with entity encoded value
-					if bufAttrSeparator == '\'' && char == '"' {
-						writeStrToBuf(&buf, &lastChar, entityEncoderDoubleQuote)
 						continue
 					}
 				}
 
 				// attribute value declaration
 			} else if char == '=' {
+				if i >= 0 && html[i-4] == 'h' && html[i-3] == 'r' && html[i-2] == 'e' && html[i-1] == 'f' {
+					isBufInHrefAttr = true
+				}
+
 				isBufInAttr = true
 				writeByteToBuf(&buf, &lastChar, char)
 				continue
@@ -134,6 +166,7 @@ func Minifier(html string) string {
 			if bufAttrSeparator != 0 {
 				bufAttrSeparator = 0
 				isBufInAttr = false
+				isBufInHrefAttr = false
 				writeByteToBuf(&buf, &lastChar, '"')
 			}
 
@@ -142,7 +175,7 @@ func Minifier(html string) string {
 			continue
 		}
 
-		fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator)
+		// fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator, isBufInHrefAttr, repeatedSpaces)
 		writeByteToBuf(&buf, &lastChar, char)
 	}
 

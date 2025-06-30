@@ -9,7 +9,7 @@ func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
 
 	if res != expected {
-		t.Errorf("expected %s, got %s", expected, res)
+		t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
 	}
 }
 
@@ -272,6 +272,7 @@ func TestHTMLMinifier(t *testing.T) {
 		<!------------>
 		<!------------->
 		<!-------------->
+		test
 		<!-------------->
 		<!---->
 		<!-- -->
@@ -281,13 +282,190 @@ func TestHTMLMinifier(t *testing.T) {
 
 </html>
 `
-		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body><p>test  test</p>The content of the document......</body></html>"
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body>test<p>test  test</p>The content of the document......</body></html>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_29", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+
+		<!------------>
+		<!------------->
+		<!-------------->
+		test 
+		<!-------------->
+		<!---->
+		<!-- -->
+		<p>test <!-- test --> test</p>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body>test <p>test  test</p>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_30", func(t *testing.T) {
 		raw := "<!------------>test"
 		expected := "test"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_31", func(t *testing.T) {
+		raw := "<!------------> test"
+		expected := " test"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_32", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style>
+		</style>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style>
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_33", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style>
+			.header {
+				background: purple;
+			}
+		</style>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style>
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_34", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<  style  type=" text/css " >
+			.header {
+				background: purple;
+			}
+		</style>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style type="text/css">
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_35", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style src="text/css">
+			.header {
+				background: purple;
+			}
+		</style>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style type="text/css">
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_36", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style media="print">
+			.header {
+				background: purple;
+			}
+		</style>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style media="print">
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_37", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style media="screen   "  >
+			.header {
+				background: purple;
+			}
+		</  style >
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style media="screen">
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
 		validateHTMLMinifier(t, raw, expected)
 	})
 }

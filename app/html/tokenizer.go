@@ -2,7 +2,6 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 )
 
 // INFO:
@@ -26,6 +25,7 @@ func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
 	*lastChar = value[len(value)-1]
 }
 
+// INFO: HTML comments in HTML comments are forbidden.
 func Minifier(html string) string {
 	var (
 		buf      bytes.Buffer
@@ -35,7 +35,9 @@ func Minifier(html string) string {
 		bufAttrSeparator byte
 		repeatedSpaces   [2]int
 
-		isInComment bool
+		isInComment  bool
+		isInStyleTag bool
+		// isInScriptTag bool
 
 		isBufInTag      bool
 		isBufInAttr     bool
@@ -50,7 +52,6 @@ func Minifier(html string) string {
 	// entity encoded representation of "
 	entityEncoderDoubleQuote := "&quot;"
 
-	// TODO: gérer les commentaires, commentaire dans un commentaire?
 	// TODO: gérer les <script> <style>
 	// TODO: gérer les chevrons dans le contenu?
 
@@ -73,8 +74,7 @@ func Minifier(html string) string {
 			repeatedSpaces[1] = 0
 		}
 
-		fmt.Println(isInComment)
-		// remove HTML comments
+		// remove HTML comments <!-- -->
 		if !isInComment {
 			// <!--
 			// INFO: check if i+N < len(html) -> with N as maximal number added (this rule prevent every overflow)
@@ -91,6 +91,29 @@ func Minifier(html string) string {
 
 			continue
 		}
+
+		// manage <style></style>
+		if !isInStyleTag {
+			// <style>
+			// if i+6 < len(html) && char == '<' && html[i+1] == 's' && html[i+2] == 't' &&
+			//	html[i+3] == 'y' && html[i+4] == 'l' && html[i+5] == 'e' && html[i+6] == '>' {
+			//	isInStyleTag = true
+
+			//	writeByteToBuf(&buf, &lastChar, char)
+			//	continue
+			//}
+		} else {
+			// </style>
+			//if i >= 7 && i < len(html) && html[i-7] == '<' && html[i-6] == '/' && html[i-5] == 's' && html[i-4] == 't' &&
+			//	html[i-3] == 'y' && html[i-2] == 'l' && html[i-1] == 'e' && char == '>' {
+			//	isInStyleTag = false
+			//}
+
+			// writeByteToBuf(&buf, &lastChar, char)
+			// continue
+		}
+
+		// manage <script></script>
 
 		// remove line feed, tab and carriage return
 		if char == '\n' || char == '\t' || char == '\r' {

@@ -59,6 +59,8 @@ func Minifier(html string) string {
 	// TODO: tout paramétrer en bool
 	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
+	// TODO: benchmark
+
 	// WARN: previous characters = use buf
 	// WARN: next characters = use html
 	for i := 0; i < len(html); i++ {
@@ -179,7 +181,6 @@ func Minifier(html string) string {
 
 					// add for href attritube value the repeated spaces
 					if isBufInHrefAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
-						// TODO: refacto with buf.Truncate() ?
 						spacesToAdd := ""
 						for i := 0; i < repeatedSpaces[0]-1; i++ {
 							spacesToAdd += " "
@@ -203,7 +204,7 @@ func Minifier(html string) string {
 
 				// attribute value declaration
 			} else if char == '=' {
-				if i >= 4 && i < len(html) && html[i-4] == 'h' && html[i-3] == 'r' && html[i-2] == 'e' && html[i-1] == 'f' {
+				if bufLen > 4 && bufBytes[bufLen-4] == 'h' && bufBytes[bufLen-3] == 'r' && bufBytes[bufLen-2] == 'e' && bufBytes[bufLen-1] == 'f' {
 					isBufInHrefAttr = true
 				}
 

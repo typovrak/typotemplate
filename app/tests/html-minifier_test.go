@@ -159,9 +159,135 @@ func TestHTMLMinifier(t *testing.T) {
 		validateHTMLMinifier(t, raw, expected)
 	})
 
-	t.Run("minifier_21", func(t *testing.T) {
+	t.Run("minifier_22", func(t *testing.T) {
 		raw := "<a  href=\" https://mscholz.dev/blog    =  test coucou    \"></a>"
 		expected := "<a href=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_23", func(t *testing.T) {
+		raw := `
+<  !DOCTYPE		 html  >
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_24", func(t *testing.T) {
+		raw := `
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01 Transitional//EN\" \"http://www.w3.org/TR/html4/loose.dtd\"><html><head><title>Title of the document</title></head><body>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_25", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\"><html><head><title>Title of the document</title></head><body>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_26", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+
+		<!-- test -->
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_27", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+
+		<p>test <!-- test -->test</p>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body><p>test test</p>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_28", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Title of the document</title>
+	</head>
+
+	<body>
+
+		<!------------>
+		<!------------->
+		<!-------------->
+		<!-------------->
+		<!---->
+		<!-- -->
+		<p>test <!-- test --> test</p>
+		The content of the document......
+	</body>
+
+</html>
+`
+		expected := "<!DOCTYPE html><html><head><title>Title of the document</title></head><body><p>test  test</p>The content of the document......</body></html>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_29", func(t *testing.T) {
+		raw := "<!------------>test"
+		expected := "test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 }

@@ -2,7 +2,15 @@ package html
 
 import (
 	"bytes"
+	"fmt"
 )
+
+// INFO:
+// Golang
+// pas de regex
+// pas de dépendances* (sauf connecteurs type DB ou Prometheus)
+// pas de tokenisation/lexer/parsing, tout en une boucle si possible
+// pas d'IA dans l'IDE/éditeur de texte
 
 //func Header() string {
 //	return "<a title=\"test\">test</a>"
@@ -19,32 +27,36 @@ func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
 }
 
 func Minifier(html string) string {
-	var buf bytes.Buffer
-	buf.Grow(len(html))
-
 	var (
-		char             byte
-		lastChar         byte
+		buf      bytes.Buffer
+		char     byte
+		lastChar byte
+
 		bufAttrSeparator byte
 		repeatedSpaces   [2]int
+
+		isInComment bool
 
 		isBufInTag      bool
 		isBufInAttr     bool
 		isBufInHrefAttr bool
-		bufBytes        []byte
-		bufLen          int
+
+		bufBytes []byte
+		bufLen   int
 	)
 
+	buf.Grow(len(html))
+
+	// entity encoded representation of "
 	entityEncoderDoubleQuote := "&quot;"
 
-	// isBufferInComment := true
-
-	// TODO: gérer les commentaires
-	// TODO: gérer le doctype
+	// TODO: gérer les commentaires, commentaire dans un commentaire?
 	// TODO: gérer les <script> <style>
+	// TODO: gérer les chevrons dans le contenu?
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
 	// TODO: tout paramétrer en bool
+	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
 	// WARN: previous characters = use buf
 	// WARN: next characters = use html
@@ -61,6 +73,25 @@ func Minifier(html string) string {
 			repeatedSpaces[1] = 0
 		}
 
+		fmt.Println(isInComment)
+		// remove HTML comments
+		if !isInComment {
+			// <!--
+			// INFO: check if i+N < len(html) -> with N as maximal number added (this rule prevent every overflow)
+			if i+3 < len(html) && char == '<' && html[i+1] == '!' && html[i+2] == '-' && html[i+3] == '-' {
+				isInComment = true
+				continue
+			}
+		} else {
+			// -->
+			// INFO: check if i >= |N| && i < len(html) -> with N as minimal number added (this rule prevent every overflow)
+			if i >= 2 && i < len(html) && html[i-2] == '-' && html[i-1] == '-' && char == '>' {
+				isInComment = false
+			}
+
+			continue
+		}
+
 		// remove line feed, tab and carriage return
 		if char == '\n' || char == '\t' || char == '\r' {
 			continue
@@ -75,13 +106,13 @@ func Minifier(html string) string {
 
 		if isBufInTag {
 			// remove double space in tag
-			if (lastChar == ' ' && char == ' ') || (i+1 <= len(html)-1 && char == ' ' && html[i+1] == ' ') {
+			if (lastChar == ' ' && char == ' ') || (i+1 < len(html) && char == ' ' && html[i+1] == ' ') {
 				continue
 			}
 
 			// remove space at HTML tag start
 			if (lastChar == '<' && char == ' ') ||
-				(2 < bufLen && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
+				(bufLen > 2 && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
 				continue
 			}
 
@@ -113,7 +144,7 @@ func Minifier(html string) string {
 					}
 
 					// remove end trailing space from attribute value
-					if i+1 <= len(html)-1 && char == ' ' && html[i+1] == bufAttrSeparator {
+					if i+1 < len(html) && char == ' ' && html[i+1] == bufAttrSeparator {
 						continue
 					}
 
@@ -122,8 +153,10 @@ func Minifier(html string) string {
 						writeStrToBuf(&buf, &lastChar, entityEncoderDoubleQuote)
 						continue
 					}
+
 					// add for href attritube value the repeated spaces
 					if isBufInHrefAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
+						// TODO: refacto with buf.Truncate() ?
 						spacesToAdd := ""
 						for i := 0; i < repeatedSpaces[0]-1; i++ {
 							spacesToAdd += " "
@@ -147,7 +180,7 @@ func Minifier(html string) string {
 
 				// attribute value declaration
 			} else if char == '=' {
-				if i >= 0 && html[i-4] == 'h' && html[i-3] == 'r' && html[i-2] == 'e' && html[i-1] == 'f' {
+				if i >= 4 && i < len(html) && html[i-4] == 'h' && html[i-3] == 'r' && html[i-2] == 'e' && html[i-1] == 'f' {
 					isBufInHrefAttr = true
 				}
 
@@ -157,7 +190,7 @@ func Minifier(html string) string {
 			}
 
 			// remove space at HTML tag end
-			if i+1 <= len(html)-1 && char == ' ' && html[i+1] == '>' {
+			if i+1 < len(html) && char == ' ' && html[i+1] == '>' {
 				continue
 			}
 		}

@@ -35,9 +35,7 @@ func Minifier(html string) string {
 		bufAttrSeparator byte
 		repeatedSpaces   [2]int
 
-		isInComment  bool
-		isInStyleTag bool
-		// isInScriptTag bool
+		isInComment bool
 
 		isBufInTag      bool
 		isBufInAttr     bool
@@ -51,6 +49,15 @@ func Minifier(html string) string {
 
 	// entity encoded representation of "
 	entityEncoderDoubleQuote := "&quot;"
+
+	// all state for managing <style></style>
+	const (
+		StyleTagOutside int = iota
+		StyleTagOpening
+		StyleTagInCSS
+		StyleTagClosing
+	)
+	styleTagState := StyleTagOpening
 
 	// TODO: gérer les <script> <style>
 	// TODO: gérer les chevrons dans le contenu?
@@ -94,25 +101,33 @@ func Minifier(html string) string {
 			continue
 		}
 
+		// trouver sur le buffer propre <style car cela supprime les espaces inutiles.
+		// attendre une fois qu'on a cela que isBufInTag passe à false : on est dans du CSS
+		// append au buffer jusqu'a avoir </style>
+		// fin.
+
+		// la balise style est ouverte et on attend isBufInTag à false
+		// on est dans du CSS
+		// on est dans un tag fermant </style>
+
 		// manage <style></style>
-		if !isInStyleTag {
-			// <style>
-			// if i+6 < len(html) && char == '<' && html[i+1] == 's' && html[i+2] == 't' &&
-			//	html[i+3] == 'y' && html[i+4] == 'l' && html[i+5] == 'e' && html[i+6] == '>' {
-			//	isInStyleTag = true
+		switch styleTagState {
+		case StyleTagOutside:
+			if bufLen > 6 && bufBytes[bufLen-6] == '<' && bufBytes[bufLen-5] == 's' && bufBytes[bufLen-4] == 't' &&
+				bufBytes[bufLen-3] == 'y' && bufBytes[bufLen-2] == 'l' && bufBytes[bufLen-1] == 'e' {
 
-			//	writeByteToBuf(&buf, &lastChar, char)
-			//	continue
-			//}
-		} else {
-			// </style>
-			//if i >= 7 && i < len(html) && html[i-7] == '<' && html[i-6] == '/' && html[i-5] == 's' && html[i-4] == 't' &&
-			//	html[i-3] == 'y' && html[i-2] == 'l' && html[i-1] == 'e' && char == '>' {
-			//	isInStyleTag = false
-			//}
+				styleTagState = StyleTagOpening
+			}
 
-			// writeByteToBuf(&buf, &lastChar, char)
-			// continue
+		case StyleTagOpening:
+			if !isBufInTag {
+				styleTagState = StyleTagInCSS
+			}
+
+		case StyleTagInCSS:
+		// TODO: problématique : formater <style> sans devoir variabiliser du code sous jacent
+
+		case StyleTagClosing:
 		}
 
 		// manage <script></script>

@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"fmt"
 )
 
 // INFO:
@@ -48,7 +49,10 @@ func Minifier(html string) string {
 	buf.Grow(len(html))
 
 	// entity encoded representation of "
-	entityEncoderDoubleQuote := "&quot;"
+	entityEncodedDoubleQuote := "&quot;"
+
+	// url encoded representation of "
+	urlEncodedDoubleQuote := "%22"
 
 	// all state for managing <style></style>
 	const (
@@ -63,6 +67,7 @@ func Minifier(html string) string {
 	const (
 		ScriptTagOutside int = iota
 		ScriptTagOpening
+		ScriptTagOpeningSrc
 		ScriptTagInJS
 		ScriptTagClosing
 	)
@@ -71,6 +76,7 @@ func Minifier(html string) string {
 	// TODO: gérer les <script> <style>
 	// src= action= data=
 
+	// TODO: gérer les balises auto fermante
 	// TODO: gérer les chevrons dans le contenu?
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
@@ -142,8 +148,6 @@ func Minifier(html string) string {
 			}
 		}
 
-		// fmt.Println(string(char), "styleTagState:", styleTagState, isBufInTag)
-
 		// manage <script></script>
 		switch scriptTagState {
 		case ScriptTagOutside:
@@ -155,8 +159,20 @@ func Minifier(html string) string {
 			}
 
 		case ScriptTagOpening:
+			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
+				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
+				scriptTagState = ScriptTagOpeningSrc
+			}
+
 			if !isBufInTag {
 				scriptTagState = ScriptTagInJS
+			}
+
+		case ScriptTagOpeningSrc:
+			if bufLen > 8 && bufBytes[bufLen-8] == '<' && bufBytes[bufLen-7] == '/' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
+				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
+
+				scriptTagState = ScriptTagClosing
 			}
 
 		case ScriptTagInJS:
@@ -219,6 +235,7 @@ func Minifier(html string) string {
 				}
 
 				if bufAttrSeparator != 0 {
+					fmt.Println("lastChar", string(char), repeatedSpaces)
 					// remove start trailing space from attribute value
 					if lastChar == '"' && char == ' ' {
 						continue
@@ -231,19 +248,13 @@ func Minifier(html string) string {
 
 					// replace all " in attribute value with entity encoded value
 					if bufAttrSeparator == '\'' && char == '"' {
-						writeStrToBuf(&buf, &lastChar, entityEncoderDoubleQuote)
-						continue
-					}
-
-					// add for href attritube value the repeated spaces
-					if isBufInURLAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
-						spacesToAdd := ""
-						for i := 0; i < repeatedSpaces[0]-1; i++ {
-							spacesToAdd += " "
+						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
+						if isBufInURLAttr {
+							writeStrToBuf(&buf, &lastChar, urlEncodedDoubleQuote)
+						} else {
+							writeStrToBuf(&buf, &lastChar, entityEncodedDoubleQuote)
 						}
 
-						spacesToAdd += string(char)
-						writeStrToBuf(&buf, &lastChar, spacesToAdd)
 						continue
 					}
 
@@ -256,6 +267,22 @@ func Minifier(html string) string {
 						writeByteToBuf(&buf, &lastChar, char)
 						continue
 					}
+
+					fmt.Println(repeatedSpaces, string(char), string(lastChar))
+					// add for href attritube value the repeated spaces
+					// TODO: problème de " ' avec les espaces, voir aussi pour URL encoder les '
+					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
+						char != ' ' && char != '\'' && char != '"' {
+						spacesToAdd := ""
+						for i := 0; i < repeatedSpaces[0]-1; i++ {
+							spacesToAdd += " "
+						}
+
+						spacesToAdd += string(char)
+						writeStrToBuf(&buf, &lastChar, spacesToAdd)
+						continue
+					}
+
 				}
 
 				// attribute value declaration
@@ -297,7 +324,6 @@ func Minifier(html string) string {
 			continue
 		}
 
-		// fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator, isBufInURLAttr, repeatedSpaces)
 		writeByteToBuf(&buf, &lastChar, char)
 	}
 

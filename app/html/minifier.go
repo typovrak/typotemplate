@@ -59,6 +59,15 @@ func Minifier(html string) string {
 	)
 	styleTagState := StyleTagOutside
 
+	// all state for managing <script></script>
+	const (
+		ScriptTagOutside int = iota
+		ScriptTagOpening
+		ScriptTagInJS
+		ScriptTagClosing
+	)
+	scriptTagState := ScriptTagOutside
+
 	// TODO: gérer les <script> <style>
 	// TODO: gérer les chevrons dans le contenu?
 
@@ -102,18 +111,7 @@ func Minifier(html string) string {
 			continue
 		}
 
-		// trouver sur le buffer propre <style car cela supprime les espaces inutiles.
-		// attendre une fois qu'on a cela que isBufInTag passe à false : on est dans du CSS
-		// append au buffer jusqu'a avoir </style>
-		// fin.
-
-		// la balise style est ouverte et on attend isBufInTag à false
-		// on est dans du CSS
-		// on est dans un tag fermant </style>
-
 		// manage <style></style>
-		// fmt.Println(string(char), "styleTagState:", styleTagState, isBufInTag)
-
 		switch styleTagState {
 		case StyleTagOutside:
 			// <style
@@ -142,10 +140,39 @@ func Minifier(html string) string {
 			}
 		}
 
+		// fmt.Println(string(char), "styleTagState:", styleTagState, isBufInTag)
+
 		// manage <script></script>
+		switch scriptTagState {
+		case ScriptTagOutside:
+			// <script
+			if bufLen > 7 && bufBytes[bufLen-7] == '<' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
+				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
+
+				scriptTagState = ScriptTagOpening
+			}
+
+		case ScriptTagOpening:
+			if !isBufInTag {
+				scriptTagState = ScriptTagInJS
+			}
+
+		case ScriptTagInJS:
+			// </script
+			if bufLen > 8 && bufBytes[bufLen-8] == '<' && bufBytes[bufLen-7] == '/' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
+				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
+
+				scriptTagState = ScriptTagClosing
+			}
+
+		case ScriptTagClosing:
+			if !isBufInTag {
+				scriptTagState = ScriptTagOutside
+			}
+		}
 
 		// remove line feed, tab and carriage return
-		if styleTagState != StyleTagInCSS && (char == '\n' || char == '\t' || char == '\r') {
+		if styleTagState != StyleTagInCSS && scriptTagState != ScriptTagInJS && (char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
 

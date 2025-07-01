@@ -57,12 +57,13 @@ func Minifier(html string) string {
 		StyleTagInCSS
 		StyleTagClosing
 	)
-	styleTagState := StyleTagOpening
+	styleTagState := StyleTagOutside
 
 	// TODO: gérer les <script> <style>
 	// TODO: gérer les chevrons dans le contenu?
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
+	// TODO: retirer les espaces entre les balises html ou pas si aucun texte?
 	// TODO: tout paramétrer en bool
 	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
@@ -111,8 +112,11 @@ func Minifier(html string) string {
 		// on est dans un tag fermant </style>
 
 		// manage <style></style>
+		// fmt.Println(string(char), "styleTagState:", styleTagState, isBufInTag)
+
 		switch styleTagState {
 		case StyleTagOutside:
+			// <style
 			if bufLen > 6 && bufBytes[bufLen-6] == '<' && bufBytes[bufLen-5] == 's' && bufBytes[bufLen-4] == 't' &&
 				bufBytes[bufLen-3] == 'y' && bufBytes[bufLen-2] == 'l' && bufBytes[bufLen-1] == 'e' {
 
@@ -125,15 +129,23 @@ func Minifier(html string) string {
 			}
 
 		case StyleTagInCSS:
-		// TODO: problématique : formater <style> sans devoir variabiliser du code sous jacent
+			// </style
+			if bufLen > 7 && bufBytes[bufLen-7] == '<' && bufBytes[bufLen-6] == '/' && bufBytes[bufLen-5] == 's' &&
+				bufBytes[bufLen-4] == 't' && bufBytes[bufLen-3] == 'y' && bufBytes[bufLen-2] == 'l' && bufBytes[bufLen-1] == 'e' {
+
+				styleTagState = StyleTagClosing
+			}
 
 		case StyleTagClosing:
+			if !isBufInTag {
+				styleTagState = StyleTagOutside
+			}
 		}
 
 		// manage <script></script>
 
 		// remove line feed, tab and carriage return
-		if char == '\n' || char == '\t' || char == '\r' {
+		if styleTagState != StyleTagInCSS && (char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
 

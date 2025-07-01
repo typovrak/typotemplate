@@ -403,7 +403,7 @@ func TestHTMLMinifier(t *testing.T) {
 	</head>
 	<body>
 		The content of the document......
-		<style src="text/css">
+		<style type="text/css">
 			.header {
 				background: purple;
 			}
@@ -466,6 +466,46 @@ func TestHTMLMinifier(t *testing.T) {
 				background: purple;
 			}
 		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_38", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<style media="screen   "  >
+			.header {
+				background: purple;
+			}
+		</  style >
+		<style media="screen   "  >
+			.header {
+				background: purple;
+			}
+		</  style >
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<style media="screen">
+			.header {
+				background: purple;
+			}
+		</style><style media="screen">
+			.header {
+				background: purple;
+			}
+		</style></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_39", func(t *testing.T) {
+		raw := "<a><a> <a></a>"
+		expected := "<a><a> <a></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 }

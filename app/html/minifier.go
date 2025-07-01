@@ -37,9 +37,9 @@ func Minifier(html string) string {
 
 		isInComment bool
 
-		isBufInTag      bool
-		isBufInAttr     bool
-		isBufInHrefAttr bool
+		isBufInTag     bool
+		isBufInAttr    bool
+		isBufInURLAttr bool
 
 		bufBytes []byte
 		bufLen   int
@@ -236,7 +236,7 @@ func Minifier(html string) string {
 					}
 
 					// add for href attritube value the repeated spaces
-					if isBufInHrefAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
+					if isBufInURLAttr && repeatedSpaces[0] > 1 && char != ' ' && char != '\'' && char != '"' {
 						spacesToAdd := ""
 						for i := 0; i < repeatedSpaces[0]-1; i++ {
 							spacesToAdd += " "
@@ -252,7 +252,7 @@ func Minifier(html string) string {
 						bufAttrSeparator = 0
 						char = '"'
 						isBufInAttr = false
-						isBufInHrefAttr = false
+						isBufInURLAttr = false
 						writeByteToBuf(&buf, &lastChar, char)
 						continue
 					}
@@ -260,8 +260,17 @@ func Minifier(html string) string {
 
 				// attribute value declaration
 			} else if char == '=' {
-				if bufLen > 4 && bufBytes[bufLen-4] == 'h' && bufBytes[bufLen-3] == 'r' && bufBytes[bufLen-2] == 'e' && bufBytes[bufLen-1] == 'f' {
-					isBufInHrefAttr = true
+				// URL in href, src, action, data attributes
+				// href
+				if (bufLen > 4 && bufBytes[bufLen-4] == 'h' && bufBytes[bufLen-3] == 'r' && bufBytes[bufLen-2] == 'e' && bufBytes[bufLen-1] == 'f') ||
+					// src
+					(bufLen > 3 && bufBytes[bufLen-3] == 's' && bufBytes[bufLen-2] == 'r' && bufBytes[bufLen-1] == 'c') ||
+					// action
+					(bufLen > 6 && bufBytes[bufLen-6] == 'a' && bufBytes[bufLen-5] == 'c' && bufBytes[bufLen-4] == 't' && bufBytes[bufLen-3] == 'i' &&
+						bufBytes[bufLen-2] == 'o' && bufBytes[bufLen-1] == 'n') ||
+					// data
+					(bufLen > 4 && bufBytes[bufLen-4] == 'd' && bufBytes[bufLen-3] == 'a' && bufBytes[bufLen-2] == 't' && bufBytes[bufLen-1] == 'a') {
+					isBufInURLAttr = true
 				}
 
 				isBufInAttr = true
@@ -279,7 +288,7 @@ func Minifier(html string) string {
 			if bufAttrSeparator != 0 {
 				bufAttrSeparator = 0
 				isBufInAttr = false
-				isBufInHrefAttr = false
+				isBufInURLAttr = false
 				writeByteToBuf(&buf, &lastChar, '"')
 			}
 
@@ -288,7 +297,7 @@ func Minifier(html string) string {
 			continue
 		}
 
-		// fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator, isBufInHrefAttr, repeatedSpaces)
+		// fmt.Println("add this char, no if triggered:", string(char), isBufInAttr, bufAttrSeparator, isBufInURLAttr, repeatedSpaces)
 		writeByteToBuf(&buf, &lastChar, char)
 	}
 

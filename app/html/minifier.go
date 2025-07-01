@@ -69,6 +69,8 @@ func Minifier(html string) string {
 	scriptTagState := ScriptTagOutside
 
 	// TODO: gérer les <script> <style>
+	// src= action= data=
+
 	// TODO: gérer les chevrons dans le contenu?
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?

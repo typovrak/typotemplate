@@ -43,6 +43,15 @@ func Minifier(html string) string {
 
 		bufBytes []byte
 		bufLen   int
+
+		styleTagOpeningSuffix  = []byte("<style")
+		styleTagClosingSuffix  = []byte("</style")
+		scriptTagOpeningSuffix = []byte("<script")
+		scriptTagClosingSuffix = []byte("</script")
+		hrefAttrSuffix         = []byte("href")
+		srcAttrSuffix          = []byte("src")
+		actionAttrSuffix       = []byte("action")
+		dataAttrSuffix         = []byte("data")
 	)
 
 	buf.Grow(len(html))
@@ -68,11 +77,12 @@ func Minifier(html string) string {
 	const (
 		ScriptTagOutside int = iota
 		ScriptTagOpening
-		ScriptTagOpeningSrc
 		ScriptTagInJS
 		ScriptTagClosing
 	)
 	scriptTagState := ScriptTagOutside
+	// isScriptTagSrc := false
+	// scriptTagClosing := ""
 
 	// TODO: gérer les <script> <style>
 	// src= action= data=
@@ -124,9 +134,7 @@ func Minifier(html string) string {
 		switch styleTagState {
 		case StyleTagOutside:
 			// <style
-			if bufLen > 6 && bufBytes[bufLen-6] == '<' && bufBytes[bufLen-5] == 's' && bufBytes[bufLen-4] == 't' &&
-				bufBytes[bufLen-3] == 'y' && bufBytes[bufLen-2] == 'l' && bufBytes[bufLen-1] == 'e' {
-
+			if bytes.HasSuffix(bufBytes, styleTagOpeningSuffix) {
 				styleTagState = StyleTagOpening
 			}
 
@@ -137,9 +145,7 @@ func Minifier(html string) string {
 
 		case StyleTagInCSS:
 			// </style
-			if bufLen > 7 && bufBytes[bufLen-7] == '<' && bufBytes[bufLen-6] == '/' && bufBytes[bufLen-5] == 's' &&
-				bufBytes[bufLen-4] == 't' && bufBytes[bufLen-3] == 'y' && bufBytes[bufLen-2] == 'l' && bufBytes[bufLen-1] == 'e' {
-
+			if bytes.HasSuffix(bufBytes, styleTagClosingSuffix) {
 				styleTagState = StyleTagClosing
 			}
 
@@ -153,34 +159,32 @@ func Minifier(html string) string {
 		switch scriptTagState {
 		case ScriptTagOutside:
 			// <script
-			if bufLen > 7 && bufBytes[bufLen-7] == '<' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
-				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
-
+			if bytes.HasSuffix(bufBytes, scriptTagOpeningSuffix) {
 				scriptTagState = ScriptTagOpening
 			}
 
 		case ScriptTagOpening:
+			// src="x"
 			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
 				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
-				scriptTagState = ScriptTagOpeningSrc
+				//			isScriptTagSrc = true
+				scriptTagState = ScriptTagClosing
 			}
 
 			if !isBufInTag {
 				scriptTagState = ScriptTagInJS
 			}
 
-		case ScriptTagOpeningSrc:
-			if bufLen > 8 && bufBytes[bufLen-8] == '<' && bufBytes[bufLen-7] == '/' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
-				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
-
-				scriptTagState = ScriptTagClosing
-			}
-
 		case ScriptTagInJS:
-			// </script
-			if bufLen > 8 && bufBytes[bufLen-8] == '<' && bufBytes[bufLen-7] == '/' && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'c' &&
-				bufBytes[bufLen-4] == 'r' && bufBytes[bufLen-3] == 'i' && bufBytes[bufLen-2] == 'p' && bufBytes[bufLen-1] == 't' {
+			// if isScriptTagSrc {
+			//	// </script
+			//	if char == len(scriptTagClosing)
 
+			//	continue
+			//}
+
+			// </script
+			if bytes.HasSuffix(bufBytes, scriptTagClosingSuffix) {
 				scriptTagState = ScriptTagClosing
 			}
 
@@ -295,15 +299,9 @@ func Minifier(html string) string {
 				// attribute value declaration
 			} else if char == '=' {
 				// URL in href, src, action, data attributes
-				// href
-				if (bufLen > 4 && bufBytes[bufLen-4] == 'h' && bufBytes[bufLen-3] == 'r' && bufBytes[bufLen-2] == 'e' && bufBytes[bufLen-1] == 'f') ||
-					// src
-					(bufLen > 3 && bufBytes[bufLen-3] == 's' && bufBytes[bufLen-2] == 'r' && bufBytes[bufLen-1] == 'c') ||
-					// action
-					(bufLen > 6 && bufBytes[bufLen-6] == 'a' && bufBytes[bufLen-5] == 'c' && bufBytes[bufLen-4] == 't' && bufBytes[bufLen-3] == 'i' &&
-						bufBytes[bufLen-2] == 'o' && bufBytes[bufLen-1] == 'n') ||
-					// data
-					(bufLen > 4 && bufBytes[bufLen-4] == 'd' && bufBytes[bufLen-3] == 'a' && bufBytes[bufLen-2] == 't' && bufBytes[bufLen-1] == 'a') {
+				if bytes.HasSuffix(bufBytes, hrefAttrSuffix) || bytes.HasSuffix(bufBytes, srcAttrSuffix) ||
+					bytes.HasSuffix(bufBytes, actionAttrSuffix) || bytes.HasSuffix(bufBytes, dataAttrSuffix) {
+
 					isBufInURLAttr = true
 				}
 

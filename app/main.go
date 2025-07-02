@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"typotemplate/config/app"
-	"typotemplate/html"
 )
 
 func main() {
 	app.RequireEnv()
 
-	html.Tokenizer()
+	// html.Minifier()
 
-	fmt.Println("Hello World 4!")
+	fmt.Println("Hello World !")
 }

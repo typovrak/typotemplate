@@ -508,6 +508,296 @@ func TestHTMLMinifier(t *testing.T) {
 		expected := "<a><a> <a></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_40", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script>
+			console.log("test");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script>
+			console.log("test");
+		</script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_41", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<  script  >
+			console.log('test');
+		</  script >
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script>
+			console.log('test');
+		</script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_42", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script type="text/javascript">
+			console.log("test");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script type="text/javascript">
+			console.log("test");
+		</script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_43", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script type="text/javascript  ">
+			console.log("test");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script type="text/javascript">
+			console.log("test");
+		</script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_44", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module    src="/assets/js/test.js" >
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="/assets/js/test.js"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_45", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script src="  https://code.jquery.com/jquery-3.3.1.slim.min.js"   integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous">
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_46", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_47", func(t *testing.T) {
+		raw := "<a src=\"https://mscholz.dev/blog test coucou\"></a>"
+		expected := "<a src=\"https://mscholz.dev/blog test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_48", func(t *testing.T) {
+		raw := "<a  src=\" https://mscholz.dev/blog    test coucou    \"></a>"
+		expected := "<a src=\"https://mscholz.dev/blog    test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_49", func(t *testing.T) {
+		raw := "<a  src=\" https://mscholz.dev/blog    = test coucou    \"></a>"
+		expected := "<a src=\"https://mscholz.dev/blog    = test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_50", func(t *testing.T) {
+		raw := "<a  src=\" https://mscholz.dev/blog    =  test coucou    \"></a>"
+		expected := "<a src=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_51", func(t *testing.T) {
+		raw := "<a action=\"https://mscholz.dev/blog test coucou\"></a>"
+		expected := "<a action=\"https://mscholz.dev/blog test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_52", func(t *testing.T) {
+		raw := "<a  action=\" https://mscholz.dev/blog    test coucou    \"></a>"
+		expected := "<a action=\"https://mscholz.dev/blog    test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_53", func(t *testing.T) {
+		raw := "<a  action=\" https://mscholz.dev/blog    = test coucou    \"></a>"
+		expected := "<a action=\"https://mscholz.dev/blog    = test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_54", func(t *testing.T) {
+		raw := "<a  action=\" https://mscholz.dev/blog    =  test coucou    \"></a>"
+		expected := "<a action=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_55", func(t *testing.T) {
+		raw := "<a data=\"https://mscholz.dev/blog test coucou\"></a>"
+		expected := "<a data=\"https://mscholz.dev/blog test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_56", func(t *testing.T) {
+		raw := "<a  data=\" https://mscholz.dev/blog    test coucou    \"></a>"
+		expected := "<a data=\"https://mscholz.dev/blog    test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_57", func(t *testing.T) {
+		raw := "<a  data=\" https://mscholz.dev/blog    = test coucou    \"></a>"
+		expected := "<a data=\"https://mscholz.dev/blog    = test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_58", func(t *testing.T) {
+		raw := "<a  data=\" https://mscholz.dev/blog    =  test coucou    \"></a>"
+		expected := "<a data=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_59", func(t *testing.T) {
+		raw := "<script src=\"\"></script>"
+		expected := "<script src=\"\"></script>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_60", func(t *testing.T) {
+		raw := "<script src=\" \"></script>"
+		expected := "<script src=\"\"></script>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_61", func(t *testing.T) {
+		raw := "<script src=\"  \"></script>"
+		expected := "<script src=\"\"></script>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_62", func(t *testing.T) {
+		raw := "<script src=\"	\"></script>"
+		expected := "<script src=\"\"></script>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_63", func(t *testing.T) {
+		raw := `<script src="
+"></script>`
+		expected := "<script src=\"\"></script>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_64", func(t *testing.T) {
+		raw := "<a  src=\"  https://mscholz.dev/blog    =  test coucou    \"></a>"
+		expected := "<a src=\"https://mscholz.dev/blog    =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_65", func(t *testing.T) {
+		raw := "<a  src='  https://mscholz.dev/blog  \"  =  test coucou    '></a>"
+		expected := "<a src=\"https://mscholz.dev/blog  %22  =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_66", func(t *testing.T) {
+		raw := "<a  src='  https://mscholz.dev/blog  \"test  =  test coucou    '></a>"
+		expected := "<a src=\"https://mscholz.dev/blog  %22test  =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_67", func(t *testing.T) {
+		raw := "<a  src='  https://mscholz.dev/blog  test\"test  =  test coucou    '></a>"
+		expected := "<a src=\"https://mscholz.dev/blog  test%22test  =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_68", func(t *testing.T) {
+		raw := "<a  src='  https://mscholz.dev/blog  test\"  =  test coucou    '></a>"
+		expected := "<a src=\"https://mscholz.dev/blog  test%22  =  test coucou\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_69", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
 }
 
 //t.Run("title", func(t *testing.T) {

@@ -2,7 +2,6 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 )
 
 // INFO:
@@ -49,9 +48,11 @@ func Minifier(html string) string {
 	buf.Grow(len(html))
 
 	// entity encoded representation of "
+	// INFO: single quote (') are valid in URL attributes
 	entityEncodedDoubleQuote := "&quot;"
 
 	// url encoded representation of "
+	// INFO: single quote (') are valid in URL attributes
 	urlEncodedDoubleQuote := "%22"
 
 	// all state for managing <style></style>
@@ -235,7 +236,6 @@ func Minifier(html string) string {
 				}
 
 				if bufAttrSeparator != 0 {
-					fmt.Println("lastChar", string(char), repeatedSpaces)
 					// remove start trailing space from attribute value
 					if lastChar == '"' && char == ' ' {
 						continue
@@ -247,14 +247,8 @@ func Minifier(html string) string {
 					}
 
 					// replace all " in attribute value with entity encoded value
-					if bufAttrSeparator == '\'' && char == '"' {
-						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
-						if isBufInURLAttr {
-							writeStrToBuf(&buf, &lastChar, urlEncodedDoubleQuote)
-						} else {
-							writeStrToBuf(&buf, &lastChar, entityEncodedDoubleQuote)
-						}
-
+					if bufAttrSeparator == '\'' && char == '"' && !isBufInURLAttr {
+						writeStrToBuf(&buf, &lastChar, entityEncodedDoubleQuote)
 						continue
 					}
 
@@ -268,18 +262,31 @@ func Minifier(html string) string {
 						continue
 					}
 
-					fmt.Println(repeatedSpaces, string(char), string(lastChar))
-					// add for href attritube value the repeated spaces
 					// TODO: problème de " ' avec les espaces, voir aussi pour URL encoder les '
+
+					// add for href attritube value the repeated spaces
 					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
-						char != ' ' && char != '\'' && char != '"' {
+						char != ' ' && char != bufAttrSeparator {
+
 						spacesToAdd := ""
 						for i := 0; i < repeatedSpaces[0]-1; i++ {
 							spacesToAdd += " "
 						}
 
-						spacesToAdd += string(char)
+						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
+						if bufAttrSeparator == '\'' && char == '"' {
+							spacesToAdd += urlEncodedDoubleQuote
+						} else {
+							spacesToAdd += string(char)
+						}
+
 						writeStrToBuf(&buf, &lastChar, spacesToAdd)
+						continue
+					}
+
+					// double quotes in URLs needs to be URL encoded to work and not close the attribute value
+					if bufAttrSeparator == '\'' && char == '"' && isBufInURLAttr {
+						writeStrToBuf(&buf, &lastChar, urlEncodedDoubleQuote)
 						continue
 					}
 

@@ -15,15 +15,21 @@ import (
 //	return "<a title=\"test\">test</a>"
 //}
 
-func writeByteToBuf(buf *bytes.Buffer, lastChar *byte, value byte) {
-	buf.WriteByte(value)
-	*lastChar = value
-}
+// all state for managing <style></style>
+const (
+	StyleTagOutside int = iota
+	StyleTagOpening
+	StyleTagInCSS
+	StyleTagClosing
+)
 
-func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
-	buf.WriteString(value)
-	*lastChar = value[len(value)-1]
-}
+// all state for managing <script></script>
+const (
+	ScriptTagOutside int = iota
+	ScriptTagOpening
+	ScriptTagInJS
+	ScriptTagClosing
+)
 
 // INFO: HTML comments in HTML comments are forbidden.
 func Minifier(html string) string {
@@ -44,6 +50,13 @@ func Minifier(html string) string {
 		bufBytes []byte
 		bufLen   int
 
+		// entity encoded representation of "
+		// INFO: single quote (') are valid in URL attributes
+		entityEncodedDoubleQuote = "&quot;"
+		// url encoded representation of "
+		// INFO: single quote (') are valid in URL attributes
+		urlEncodedDoubleQuote = "%22"
+
 		styleTagOpeningSuffix  = []byte("<style")
 		styleTagClosingSuffix  = []byte("</style")
 		scriptTagOpeningSuffix = []byte("<script")
@@ -56,33 +69,13 @@ func Minifier(html string) string {
 
 	buf.Grow(len(html))
 
-	// entity encoded representation of "
-	// INFO: single quote (') are valid in URL attributes
-	entityEncodedDoubleQuote := "&quot;"
-
-	// url encoded representation of "
-	// INFO: single quote (') are valid in URL attributes
-	urlEncodedDoubleQuote := "%22"
-
 	// all state for managing <style></style>
-	const (
-		StyleTagOutside int = iota
-		StyleTagOpening
-		StyleTagInCSS
-		StyleTagClosing
-	)
 	styleTagState := StyleTagOutside
 
 	// all state for managing <script></script>
-	const (
-		ScriptTagOutside int = iota
-		ScriptTagOpening
-		ScriptTagInJS
-		ScriptTagClosing
-	)
 	scriptTagState := ScriptTagOutside
-	// isScriptTagSrc := false
-	// scriptTagClosing := ""
+	isScriptTagSrc := false
+	scriptTagClosingMatchLen := 0
 
 	// TODO: gérer les <script> <style>
 	// src= action= data=
@@ -92,6 +85,7 @@ func Minifier(html string) string {
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
 	// TODO: retirer les espaces entre les balises html ou pas si aucun texte?
+
 	// TODO: tout paramétrer en bool
 	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
@@ -156,50 +150,48 @@ func Minifier(html string) string {
 		}
 
 		// manage <script></script>
-		switch scriptTagState {
-		case ScriptTagOutside:
+		if scriptTagState == ScriptTagOutside {
 			// <script
 			if bytes.HasSuffix(bufBytes, scriptTagOpeningSuffix) {
 				scriptTagState = ScriptTagOpening
 			}
-
-		case ScriptTagOpening:
+		} else if scriptTagState == ScriptTagOpening {
 			// src="x"
 			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
 				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
-				//			isScriptTagSrc = true
-				scriptTagState = ScriptTagClosing
+				isScriptTagSrc = true
 			}
 
 			if !isBufInTag {
 				scriptTagState = ScriptTagInJS
+
+				if isScriptTagSrc {
+					goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix)
+					if goNowToNextIteration {
+						continue
+					}
+				}
 			}
 
-		case ScriptTagInJS:
-			// if isScriptTagSrc {
-			//	// </script
-			//	if char == len(scriptTagClosing)
-
-			//	continue
-			//}
-
-			// </script
-			if bytes.HasSuffix(bufBytes, scriptTagClosingSuffix) {
-				scriptTagState = ScriptTagClosing
+		} else if scriptTagState == ScriptTagInJS {
+			goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix)
+			if goNowToNextIteration {
+				continue
 			}
 
-		case ScriptTagClosing:
+		} else if scriptTagState == ScriptTagClosing {
 			if !isBufInTag {
 				scriptTagState = ScriptTagOutside
 			}
 		}
 
 		// remove line feed, tab and carriage return
-		if styleTagState != StyleTagInCSS && scriptTagState != ScriptTagInJS && (char == '\n' || char == '\t' || char == '\r') {
+		if styleTagState != StyleTagInCSS && scriptTagState != ScriptTagInJS && !isScriptTagSrc && (char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
 
 		// start HTML tag
+		// INFO: < and > are already handled by the script switch case
 		if char == '<' {
 			isBufInTag = true
 			writeByteToBuf(&buf, &lastChar, char)
@@ -333,4 +325,56 @@ func Minifier(html string) string {
 	}
 
 	return buf.String()
+}
+
+func writeByteToBuf(buf *bytes.Buffer, lastChar *byte, value byte) {
+	buf.WriteByte(value)
+	*lastChar = value
+}
+
+func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
+	buf.WriteString(value)
+	*lastChar = value[len(value)-1]
+}
+
+func handleScriptTagInJS(
+	buf *bytes.Buffer,
+	lastChar *byte,
+	char byte,
+	isBufInTag *bool,
+	scriptTagState *int,
+	isScriptTagSrc *bool,
+	scriptTagClosingMatchLen *int,
+	scriptTagClosingSuffix []byte,
+
+	// INFO: return goNowToNextIteration for executing continue keyword
+) bool {
+	if *isScriptTagSrc {
+
+		// TODO: manage \t ... here?
+		// TODO: need to reset if not correct
+
+		if char != ' ' && scriptTagClosingSuffix[*scriptTagClosingMatchLen] == char {
+			*scriptTagClosingMatchLen++
+
+			// </script
+			if *scriptTagClosingMatchLen == len(scriptTagClosingSuffix) {
+				*isScriptTagSrc = false
+				*scriptTagState = ScriptTagClosing
+
+				*isBufInTag = true
+				// INFO: buf and lastChar are already a pointer
+				writeStrToBuf(buf, lastChar, "</script")
+			}
+		}
+
+		return true
+	}
+
+	// </script
+	if bytes.HasSuffix(buf.Bytes(), scriptTagClosingSuffix) {
+		*scriptTagState = ScriptTagClosing
+	}
+
+	return false
 }

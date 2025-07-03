@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"strconv"
 	"testing"
 	"typotemplate/html"
 )
@@ -9,7 +10,7 @@ func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
 
 	if res != expected {
-		t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
+		t.Errorf("expected %s (length: %d), got %s (length: %d)", strconv.QuoteToASCII(expected), len(expected), strconv.QuoteToASCII(res), len(res))
 	}
 }
 
@@ -792,6 +793,101 @@ func TestHTMLMinifier(t *testing.T) {
 		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
 console.log("test");
 		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_70", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		</ script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_71", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		</  script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_72", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		</ script >
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_73", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		< / script  >
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_74", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça  va  ? " >
+console.log("test");
+		<  / script>
 	</body>
 </html>
 `

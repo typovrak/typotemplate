@@ -31,8 +31,10 @@ const (
 	ScriptTagClosing
 )
 
-// INFO: HTML comments in HTML comments are forbidden.
+// INFO: HTML comments in HTML comments are forbidden
 // INFO: only < are allowed in attribute without separator
+// INFO: \' in URL attributes with ' separators are forbidden
+// INFO: don't touch to href, href= href="" because this gives different and inconsistent output in JS
 func Minifier(html string) string {
 	var (
 		buf      bytes.Buffer
@@ -79,10 +81,8 @@ func Minifier(html string) string {
 	buf.Grow(len(html))
 
 	// TODO: gérer les <script> <style>
-	// src= action= data=
-
-	// TODO: gérer les balises auto fermante
 	// TODO: gérer les chevrons dans le contenu?
+	// TODO: gérer les balises auto fermante
 
 	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
 	// TODO: retirer les espaces entre les balises html ou pas si aucun texte?
@@ -91,6 +91,7 @@ func Minifier(html string) string {
 	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
 	// TODO: benchmark
+	// TODO: tester avec vite ou webpack
 
 	// WARN: previous characters = use buf
 	// WARN: next characters = use html
@@ -261,8 +262,6 @@ func Minifier(html string) string {
 						}
 					}
 
-					// TODO: problème de " ' avec les espaces, voir aussi pour URL encoder les '
-
 					// add for href attritube value the repeated spaces
 					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
 						char != ' ' && char != bufAttrSeparator {
@@ -354,10 +353,7 @@ func handleScriptTagInJS(
 ) bool {
 	if *isScriptTagSrc {
 
-		// TODO: manage \t ... here?
-		// TODO: need to reset if not correct
-
-		if char != ' ' && scriptTagClosingSuffix[*scriptTagClosingMatchLen] == char {
+		if scriptTagClosingSuffix[*scriptTagClosingMatchLen] == char {
 			*scriptTagClosingMatchLen++
 
 			// </script
@@ -368,6 +364,10 @@ func handleScriptTagInJS(
 				*isBufInTag = true
 				// INFO: buf and lastChar are already a pointer
 				writeStrToBuf(buf, lastChar, "</script")
+			}
+		} else {
+			if char != ' ' {
+				*scriptTagClosingMatchLen = 0
 			}
 		}
 

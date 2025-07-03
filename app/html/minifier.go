@@ -32,6 +32,7 @@ const (
 )
 
 // INFO: HTML comments in HTML comments are forbidden.
+// INFO: only < are allowed in attribute without separator
 func Minifier(html string) string {
 	var (
 		buf      bytes.Buffer

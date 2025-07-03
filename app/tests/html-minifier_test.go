@@ -949,8 +949,52 @@ console.log("test");
 		expected := "<a title=\"t > t\"></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
-}
 
-//t.Run("title", func(t *testing.T) {
-//	t.Errorf("error")
-//})
+	t.Run("minifier_82", func(t *testing.T) {
+		raw := "<a href=\" < \"></a>"
+		expected := "<a href=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_83", func(t *testing.T) {
+		raw := "<a href=\"  <  \"></a>"
+		expected := "<a href=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_84", func(t *testing.T) {
+		raw := "<a href=\" t  <  t \"></a>"
+		expected := "<a href=\"t  <  t\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_85", func(t *testing.T) {
+		raw := "<a href=\" > \"></a>"
+		expected := "<a href=\">\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_86", func(t *testing.T) {
+		raw := "<a href=\"  >  \"></a>"
+		expected := "<a href=\">\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_87", func(t *testing.T) {
+		raw := "<a href=\" t  >  t \"></a>"
+		expected := "<a href=\"t  >  t\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_88", func(t *testing.T) {
+		raw := "<a title=<></a>"
+		expected := "<a title=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_89", func(t *testing.T) {
+		raw := "<a href=<></a>"
+		expected := "<a href=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+}

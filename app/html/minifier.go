@@ -57,6 +57,14 @@ func Minifier(html string) string {
 		// INFO: single quote (') are valid in URL attributes
 		urlEncodedDoubleQuote = "%22"
 
+		// all state for managing <style></style>
+		styleTagState = StyleTagOutside
+
+		// all state for managing <script></script>
+		scriptTagState           = ScriptTagOutside
+		isScriptTagSrc           = false
+		scriptTagClosingMatchLen = 0
+
 		styleTagOpeningSuffix  = []byte("<style")
 		styleTagClosingSuffix  = []byte("</style")
 		scriptTagOpeningSuffix = []byte("<script")
@@ -68,14 +76,6 @@ func Minifier(html string) string {
 	)
 
 	buf.Grow(len(html))
-
-	// all state for managing <style></style>
-	styleTagState := StyleTagOutside
-
-	// all state for managing <script></script>
-	scriptTagState := ScriptTagOutside
-	isScriptTagSrc := false
-	scriptTagClosingMatchLen := 0
 
 	// TODO: gérer les <script> <style>
 	// src= action= data=
@@ -192,7 +192,7 @@ func Minifier(html string) string {
 
 		// start HTML tag
 		// INFO: < and > are already handled by the script switch case
-		if char == '<' {
+		if char == '<' && !isBufInTag {
 			isBufInTag = true
 			writeByteToBuf(&buf, &lastChar, char)
 			continue
@@ -201,12 +201,6 @@ func Minifier(html string) string {
 		if isBufInTag {
 			// remove double space in tag
 			if (lastChar == ' ' && char == ' ') || (i+1 < len(html) && char == ' ' && html[i+1] == ' ') {
-				continue
-			}
-
-			// remove space at HTML tag start
-			if (lastChar == '<' && char == ' ') ||
-				(bufLen > 2 && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
 				continue
 			}
 
@@ -258,6 +252,14 @@ func Minifier(html string) string {
 						continue
 					}
 
+					// handle case where > is in attribute without separator defined
+					if bufAttrSeparator == ' ' {
+						goNowToNextIteration := handleHTMLTagClosing(&buf, &lastChar, char, &isBufInTag, &isBufInAttr, &isBufInURLAttr, &bufAttrSeparator)
+						if goNowToNextIteration {
+							continue
+						}
+					}
+
 					// TODO: problème de " ' avec les espaces, voir aussi pour URL encoder les '
 
 					// add for href attritube value the repeated spaces
@@ -300,25 +302,25 @@ func Minifier(html string) string {
 				isBufInAttr = true
 				writeByteToBuf(&buf, &lastChar, char)
 				continue
-			}
 
-			// remove space at HTML tag end
-			if i+1 < len(html) && char == ' ' && html[i+1] == '>' {
-				continue
-			}
-		}
+				// !isBufInAttr
+			} else {
+				// remove space at HTML tag start
+				if (lastChar == '<' && char == ' ') || (bufLen > 2 && bufBytes[bufLen-2] == '<' && lastChar == '/' && char == ' ') {
+					continue
+				}
 
-		if char == '>' {
-			if bufAttrSeparator != 0 {
-				bufAttrSeparator = 0
-				isBufInAttr = false
-				isBufInURLAttr = false
-				writeByteToBuf(&buf, &lastChar, '"')
-			}
+				// remove space at HTML tag end
+				if i+1 < len(html) && char == ' ' && html[i+1] == '>' {
+					continue
+				}
 
-			isBufInTag = false
-			writeByteToBuf(&buf, &lastChar, char)
-			continue
+				// handle > character
+				goNowToNextIteration := handleHTMLTagClosing(&buf, &lastChar, char, &isBufInTag, &isBufInAttr, &isBufInURLAttr, &bufAttrSeparator)
+				if goNowToNextIteration {
+					continue
+				}
+			}
 		}
 
 		writeByteToBuf(&buf, &lastChar, char)
@@ -374,6 +376,34 @@ func handleScriptTagInJS(
 	// </script
 	if bytes.HasSuffix(buf.Bytes(), scriptTagClosingSuffix) {
 		*scriptTagState = ScriptTagClosing
+	}
+
+	return false
+}
+
+func handleHTMLTagClosing(
+	buf *bytes.Buffer,
+	lastChar *byte,
+	char byte,
+	isBufInTag *bool,
+	isBufInAttr *bool,
+	isBufInURLAttr *bool,
+	bufAttrSeparator *byte,
+
+	// INFO: return goNowToNextIteration for executing continue keyword
+) bool {
+	if char == '>' {
+		if *bufAttrSeparator != 0 {
+			*bufAttrSeparator = 0
+			*isBufInAttr = false
+			*isBufInURLAttr = false
+			writeByteToBuf(buf, lastChar, '"')
+		}
+
+		*isBufInTag = false
+		writeByteToBuf(buf, lastChar, char)
+
+		return true
 	}
 
 	return false

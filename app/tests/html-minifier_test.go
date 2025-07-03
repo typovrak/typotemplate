@@ -894,6 +894,61 @@ console.log("test");
 		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça  va  ?"></script></body></html>`
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_75", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="  https://mscholz.dev/blog/bonjour comment ça <  va  ? " >
+console.log("test");
+		<  / script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="https://mscholz.dev/blog/bonjour comment ça <  va  ?"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_76", func(t *testing.T) {
+		raw := "<a title=\" < \"></a>"
+		expected := "<a title=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_77", func(t *testing.T) {
+		raw := "<a title=\"  <  \"></a>"
+		expected := "<a title=\"<\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_78", func(t *testing.T) {
+		raw := "<a title=\" t  <  t \"></a>"
+		expected := "<a title=\"t < t\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_79", func(t *testing.T) {
+		raw := "<a title=\" > \"></a>"
+		expected := "<a title=\">\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_80", func(t *testing.T) {
+		raw := "<a title=\"  >  \"></a>"
+		expected := "<a title=\">\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_81", func(t *testing.T) {
+		raw := "<a title=\" t  >  t \"></a>"
+		expected := "<a title=\"t > t\"></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
 }
 
 //t.Run("title", func(t *testing.T) {

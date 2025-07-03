@@ -5,6 +5,9 @@ import (
 	"testing"
 )
 
+//func colorizeTestResult() string {
+//}
+
 // WARN: all tests must be in this folder, no subfolder authorized
 func TestMain(m *testing.M) {
 	// before tests
@@ -14,6 +17,8 @@ func TestMain(m *testing.M) {
 	exitVal := m.Run()
 
 	// after tests
+
+	// add colors
 
 	// exit value from tests
 	os.Exit(exitVal)

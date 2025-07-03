@@ -1279,4 +1279,88 @@ console.log("</scaroipat");
 		expected := "<img src=  /  >   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_122", func(t *testing.T) {
+		raw := "<a><</a>"
+		expected := "<a><</a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_123", func(t *testing.T) {
+		raw := "<a> <</a>"
+		expected := "<a> <</a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_124", func(t *testing.T) {
+		raw := "<a>  <</a>"
+		expected := "<a>  <</a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_125", func(t *testing.T) {
+		raw := "<a>< </a>"
+		expected := "<a>< </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_126", func(t *testing.T) {
+		raw := "<a><  </a>"
+		expected := "<a><  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_127", func(t *testing.T) {
+		raw := "<a> < </a>"
+		expected := "<a> < </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_128", func(t *testing.T) {
+		raw := "<a>  <  </a>"
+		expected := "<a>  <  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_129", func(t *testing.T) {
+		raw := "<a>></a>"
+		expected := "<a>></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_130", func(t *testing.T) {
+		raw := "<a> ></a>"
+		expected := "<a> ></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_131", func(t *testing.T) {
+		raw := "<a>  ></a>"
+		expected := "<a>  ></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_132", func(t *testing.T) {
+		raw := "<a>> </a>"
+		expected := "<a>> </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_133", func(t *testing.T) {
+		raw := "<a>>  </a>"
+		expected := "<a>>  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_134", func(t *testing.T) {
+		raw := "<a> > </a>"
+		expected := "<a> > </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_135", func(t *testing.T) {
+		raw := "<a>  >  </a>"
+		expected := "<a>  >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
 }

@@ -4,37 +4,21 @@ import (
 	"bufio"
 	"bytes"
 	"os"
+	"strconv"
 	"testing"
 )
 
 // TODO: add emoji?
 
-func AddLineFeedBetweenErrorThrown(w *os.File, runBefore *bool, errorBefore *bool, isRun bool, isError bool) {
-	if (isRun && *errorBefore) || (isError && *runBefore) {
+func AddLineFeedBetweenErrorThrown(w *os.File, errorBefore *bool, isError bool) {
+	if (!isError && *errorBefore) || (isError && !*errorBefore) {
 		w.Write([]byte("\n"))
 	}
 
-	*runBefore = isRun
 	*errorBefore = isError
 }
 
-type Color int
-
-const (
-	ColorNone Color = iota
-	ColorReset
-	ColorBlack
-	ColorRed
-	ColorGreen
-	ColorYellow
-	ColorBlue
-	ColorPurple
-	ColorCyan
-	ColorWhite
-
-	ColorBgRed
-)
-
+// ansi
 type ANSIStyle int
 
 const (
@@ -60,7 +44,8 @@ var ColorANSISTyle = map[ANSIStyle]int{
 type ANSIForeground int
 
 const (
-	ANSIForegroundBlack ANSIForeground = iota
+	ANSIForegroundNone ANSIForeground = iota
+	ANSIForegroundBlack
 	ANSIForegroundRed
 	ANSIForegroundGreen
 	ANSIForegroundYellow
@@ -71,6 +56,7 @@ const (
 )
 
 var ColorANSIForeground = map[ANSIForeground]int{
+	ANSIForegroundNone:   0,
 	ANSIForegroundBlack:  30,
 	ANSIForegroundRed:    31,
 	ANSIForegroundGreen:  32,
@@ -84,7 +70,8 @@ var ColorANSIForeground = map[ANSIForeground]int{
 type ANSIBackground int
 
 const (
-	ANSIBackgroundBlack ANSIBackground = iota
+	ANSIBackgroundNone ANSIBackground = iota
+	ANSIBackgroundBlack
 	ANSIBackgroundRed
 	ANSIBackgroundGreen
 	ANSIBackgroundYellow
@@ -95,6 +82,7 @@ const (
 )
 
 var ColorANSIBackground = map[ANSIBackground]int{
+	ANSIBackgroundNone:   0,
 	ANSIBackgroundBlack:  40,
 	ANSIBackgroundRed:    41,
 	ANSIBackgroundGreen:  42,
@@ -111,6 +99,7 @@ type ANSIConfig struct {
 	Background int
 }
 
+// global
 type Opts struct {
 	Color ColorOpts
 }
@@ -126,54 +115,65 @@ type ColorOpts struct {
 }
 
 func ColorANSI(config ANSIConfig) []byte {
-	return
+	color := []byte("\033[")
+
+	color = append(color, []byte(strconv.Itoa(config.Style))...)
+	color = append(color, ';')
+	color = append(color, []byte(strconv.Itoa(config.Foreground))...)
+
+	if config.Background != ColorANSIBackground[ANSIBackgroundNone] {
+		color = append(color, ';')
+		color = append(color, []byte(strconv.Itoa(config.Background))...)
+	}
+
+	color = append(color, 'm')
+
+	return color
 }
 
-var ColorANSI = map[Color][]byte{
-	ColorNone:   []byte(""),
-	ColorReset:  []byte("\033[0m"),
-	ColorBlack:  []byte("\033[0;30m"),
-	ColorRed:    []byte("\033[0;31m"),
-	ColorGreen:  []byte("\033[0;32m"),
-	ColorYellow: []byte("\033[0;33m"),
-	ColorBlue:   []byte("\033[0;34m"),
-	ColorPurple: []byte("\033[0;35m"),
-	ColorCyan:   []byte("\033[0;36m"),
-	ColorWhite:  []byte("\033[0;37m"),
-
-	ColorBgRed: []byte("\033[41m"),
+func NewDefaultOpts() Opts {
+	return Opts{
+		Color: ColorOpts{
+			Run: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleBold],
+				Foreground: ColorANSIForeground[ANSIForegroundCyan],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			Fail: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundRed],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			Pass: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundGreen],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			Skip: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundYellow],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			Failed: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundRed],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			Ok: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundGreen],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+			ErrorThrown: ANSIConfig{
+				Style:      ColorANSISTyle[ANSIStyleNormal],
+				Foreground: ColorANSIForeground[ANSIForegroundWhite],
+				Background: ColorANSIBackground[ANSIBackgroundNone],
+			},
+		},
+	}
 }
 
 func ColorizeTests(m *testing.M, opts Opts) {
-	// default values
-	if opts.Color.Run == 0 {
-		opts.Color.Run = ColorCyan
-	}
-
-	if opts.Color.Fail == 0 {
-		opts.Color.Fail = ColorRed
-	}
-
-	if opts.Color.Pass == 0 {
-		opts.Color.Pass = ColorGreen
-	}
-
-	if opts.Color.Skip == 0 {
-		opts.Color.Skip = ColorYellow
-	}
-
-	if opts.Color.Failed == 0 {
-		opts.Color.Failed = ColorRed
-	}
-
-	if opts.Color.Ok == 0 {
-		opts.Color.Ok = ColorGreen
-	}
-
-	if opts.Color.ErrorThrown == 0 {
-		opts.Color.ErrorThrown = ColorWhite
-	}
-
 	// create a pipe
 	r, w, _ := os.Pipe()
 
@@ -201,7 +201,6 @@ func ColorizeTests(m *testing.M, opts Opts) {
 	passedMatch := []byte("PASS")
 	failedMatch := []byte("FAIL")
 
-	runBefore := false
 	errorBefore := false
 
 	// read line by line
@@ -215,46 +214,49 @@ func ColorizeTests(m *testing.M, opts Opts) {
 			var color []byte
 			tabs := false
 
+			// TODO: \n before --- PASS: --- FAIL: --- SKIP:
+
 			// manage styling depending on bytes match
 			// === RUN
 			if bytes.Contains(line, runMatch) {
-				color = ColorANSI[opts.Color.Run]
+				color = ColorANSI(opts.Color.Run)
 				tabs = true
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, true, false)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- FAIL:
 			} else if bytes.Contains(line, failMatch) {
-				color = ColorANSI[opts.Color.Fail]
+				color = ColorANSI(opts.Color.Fail)
 				tabs = true
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- PASS:
 			} else if bytes.Contains(line, passMatch) {
-				color = ColorANSI[opts.Color.Pass]
+				color = ColorANSI(opts.Color.Pass)
 				tabs = true
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- SKIP:
 			} else if bytes.Contains(line, skipMatch) {
-				color = ColorANSI[opts.Color.Skip]
+				color = ColorANSI(opts.Color.Skip)
 				tabs = true
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// FAIL
 			} else if bytes.Equal(line, failedMatch) {
-				color = ColorANSI[opts.Color.Failed]
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				color = ColorANSI(opts.Color.Failed)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 				stdout.Write([]byte("\n"))
 
 				// ok
 			} else if bytes.Equal(line, passedMatch) {
-				color = ColorANSI[opts.Color.Ok]
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				color = ColorANSI(opts.Color.Ok)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 				stdout.Write([]byte("\n"))
 
 				// error thrown
 			} else {
-				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, true)
+				color = ColorANSI(opts.Color.ErrorThrown)
+				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, true)
 			}
 
 			if color != nil {
@@ -268,7 +270,7 @@ func ColorizeTests(m *testing.M, opts Opts) {
 			stdout.Write(line)
 
 			if color != nil {
-				stdout.Write(ColorANSI[ColorReset])
+				stdout.Write([]byte("\033[0m"))
 			}
 
 			stdout.Write([]byte("\n"))
@@ -290,9 +292,6 @@ func ColorizeTests(m *testing.M, opts Opts) {
 func TestMain(m *testing.M) {
 	os.Setenv("APP_GO_TEST", "true")
 
-	ColorizeTests(m, Opts{
-		ColorOpts{
-			Failed: ColorBgRed,
-		},
-	})
+	opts := NewDefaultOpts()
+	ColorizeTests(m, opts)
 }

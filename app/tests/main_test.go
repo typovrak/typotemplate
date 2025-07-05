@@ -35,18 +35,98 @@ const (
 	ColorBgRed
 )
 
+type ANSIStyle int
+
+const (
+	ANSIStyleReset ANSIStyle = iota
+	ANSIStyleBold
+	ANSIStyleDim
+	ANSIStyleUnderline
+	ANSIStyleInverse
+	ANSIStyleHidden
+	ANSIStyleNormal
+)
+
+var ColorANSISTyle = map[ANSIStyle]int{
+	ANSIStyleReset:     0,
+	ANSIStyleBold:      1,
+	ANSIStyleDim:       2,
+	ANSIStyleUnderline: 4,
+	ANSIStyleInverse:   7,
+	ANSIStyleHidden:    8,
+	ANSIStyleNormal:    22,
+}
+
+type ANSIForeground int
+
+const (
+	ANSIForegroundBlack ANSIForeground = iota
+	ANSIForegroundRed
+	ANSIForegroundGreen
+	ANSIForegroundYellow
+	ANSIForegroundBlue
+	ANSIForegroundPurple
+	ANSIForegroundCyan
+	ANSIForegroundWhite
+)
+
+var ColorANSIForeground = map[ANSIForeground]int{
+	ANSIForegroundBlack:  30,
+	ANSIForegroundRed:    31,
+	ANSIForegroundGreen:  32,
+	ANSIForegroundYellow: 33,
+	ANSIForegroundBlue:   34,
+	ANSIForegroundPurple: 35,
+	ANSIForegroundCyan:   36,
+	ANSIForegroundWhite:  37,
+}
+
+type ANSIBackground int
+
+const (
+	ANSIBackgroundBlack ANSIBackground = iota
+	ANSIBackgroundRed
+	ANSIBackgroundGreen
+	ANSIBackgroundYellow
+	ANSIBackgroundBlue
+	ANSIBackgroundPurple
+	ANSIBackgroundCyan
+	ANSIBackgroundWhite
+)
+
+var ColorANSIBackground = map[ANSIBackground]int{
+	ANSIBackgroundBlack:  40,
+	ANSIBackgroundRed:    41,
+	ANSIBackgroundGreen:  42,
+	ANSIBackgroundYellow: 43,
+	ANSIBackgroundBlue:   44,
+	ANSIBackgroundPurple: 45,
+	ANSIBackgroundCyan:   46,
+	ANSIBackgroundWhite:  47,
+}
+
+type ANSIConfig struct {
+	Style      int
+	Foreground int
+	Background int
+}
+
 type Opts struct {
 	Color ColorOpts
 }
 
 type ColorOpts struct {
-	Run         Color
-	Fail        Color
-	Pass        Color
-	Skip        Color
-	Failed      Color
-	Ok          Color
-	ErrorThrown Color
+	Run         ANSIConfig
+	Fail        ANSIConfig
+	Pass        ANSIConfig
+	Skip        ANSIConfig
+	Failed      ANSIConfig
+	Ok          ANSIConfig
+	ErrorThrown ANSIConfig
+}
+
+func ColorANSI(config ANSIConfig) []byte {
+	return
 }
 
 var ColorANSI = map[Color][]byte{

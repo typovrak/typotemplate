@@ -8,9 +8,15 @@ import (
 
 func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
+	toASCII := false
 
 	if res != expected {
-		t.Errorf("expected %s (length: %d), got %s (length: %d)", strconv.QuoteToASCII(expected), len(expected), strconv.QuoteToASCII(res), len(res))
+		if toASCII {
+			expected = strconv.QuoteToASCII(expected)
+			res = strconv.QuoteToASCII(res)
+		}
+
+		t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
 	}
 }
 
@@ -1362,5 +1368,9 @@ console.log("</scaroipat");
 		raw := "<a>  >  </a>"
 		expected := "<a>  >  </a>"
 		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("test skip", func(t *testing.T) {
+		t.Skip("skipping testing in short mode")
 	})
 }

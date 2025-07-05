@@ -155,14 +155,14 @@ func NewDefaultOpts() Opts {
 				Background: ColorANSIBackground[ANSIBackgroundNone],
 			},
 			Failed: ANSIConfig{
-				Style:      ColorANSISTyle[ANSIStyleNormal],
-				Foreground: ColorANSIForeground[ANSIForegroundRed],
-				Background: ColorANSIBackground[ANSIBackgroundNone],
+				Style:      ColorANSISTyle[ANSIStyleBold],
+				Foreground: ColorANSIForeground[ANSIForegroundBlack],
+				Background: ColorANSIBackground[ANSIBackgroundRed],
 			},
 			Ok: ANSIConfig{
-				Style:      ColorANSISTyle[ANSIStyleNormal],
-				Foreground: ColorANSIForeground[ANSIForegroundGreen],
-				Background: ColorANSIBackground[ANSIBackgroundNone],
+				Style:      ColorANSISTyle[ANSIStyleBold],
+				Foreground: ColorANSIForeground[ANSIForegroundBlack],
+				Background: ColorANSIBackground[ANSIBackgroundGreen],
 			},
 			ErrorThrown: ANSIConfig{
 				Style:      ColorANSISTyle[ANSIStyleNormal],
@@ -194,13 +194,6 @@ func ColorizeTests(m *testing.M, opts Opts) {
 	// setup the reader
 	reader := bufio.NewReader(r)
 
-	runMatch := []byte("=== RUN")
-	failMatch := []byte("--- FAIL:")
-	passMatch := []byte("--- PASS:")
-	skipMatch := []byte("--- SKIP")
-	passedMatch := []byte("PASS")
-	failedMatch := []byte("FAIL")
-
 	errorBefore := false
 
 	// read line by line
@@ -214,41 +207,39 @@ func ColorizeTests(m *testing.M, opts Opts) {
 			var color []byte
 			tabs := false
 
-			// TODO: \n before --- PASS: --- FAIL: --- SKIP:
-
-			// manage styling depending on bytes match
+			// manage color and style line depending on the content
 			// === RUN
-			if bytes.Contains(line, runMatch) {
+			if bytes.Contains(line, []byte("=== RUN")) {
 				color = ColorANSI(opts.Color.Run)
 				tabs = true
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- FAIL:
-			} else if bytes.Contains(line, failMatch) {
+			} else if bytes.Contains(line, []byte("--- FAIL:")) {
 				color = ColorANSI(opts.Color.Fail)
 				tabs = true
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- PASS:
-			} else if bytes.Contains(line, passMatch) {
+			} else if bytes.Contains(line, []byte("--- PASS:")) {
 				color = ColorANSI(opts.Color.Pass)
 				tabs = true
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// --- SKIP:
-			} else if bytes.Contains(line, skipMatch) {
+			} else if bytes.Contains(line, []byte("--- SKIP:")) {
 				color = ColorANSI(opts.Color.Skip)
 				tabs = true
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 
 				// FAIL
-			} else if bytes.Equal(line, failedMatch) {
+			} else if bytes.Equal(line, []byte("FAIL")) {
 				color = ColorANSI(opts.Color.Failed)
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 				stdout.Write([]byte("\n"))
 
 				// ok
-			} else if bytes.Equal(line, passedMatch) {
+			} else if bytes.Equal(line, []byte("PASS")) {
 				color = ColorANSI(opts.Color.Ok)
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, false)
 				stdout.Write([]byte("\n"))
@@ -259,20 +250,13 @@ func ColorizeTests(m *testing.M, opts Opts) {
 				AddLineFeedBetweenErrorThrown(stdout, &errorBefore, true)
 			}
 
-			if color != nil {
-				stdout.Write(color)
-			}
-
 			if tabs {
 				stdout.Write([]byte("\t"))
 			}
 
+			stdout.Write(color)
 			stdout.Write(line)
-
-			if color != nil {
-				stdout.Write([]byte("\033[0m"))
-			}
-
+			stdout.Write([]byte("\033[0m"))
 			stdout.Write([]byte("\n"))
 		}
 

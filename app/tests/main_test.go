@@ -9,8 +9,8 @@ import (
 
 // TODO: add emoji?
 
-func addLineFeedBetweenErrorThrown(w *os.File, runBefore *bool, errorBefore *bool, isRun bool, isError bool) {
-	if *runBefore || *errorBefore {
+func AddLineFeedBetweenErrorThrown(w *os.File, runBefore *bool, errorBefore *bool, isRun bool, isError bool) {
+	if (isRun && *errorBefore) || (isError && *runBefore) {
 		w.Write([]byte("\n"))
 	}
 
@@ -18,9 +18,81 @@ func addLineFeedBetweenErrorThrown(w *os.File, runBefore *bool, errorBefore *boo
 	*errorBefore = isError
 }
 
-// WARN: all tests must be in this folder, no subfolder authorized
-func TestMain(m *testing.M) {
-	os.Setenv("APP_GO_TEST", "true")
+type Color int
+
+const (
+	ColorNone Color = iota
+	ColorReset
+	ColorBlack
+	ColorRed
+	ColorGreen
+	ColorYellow
+	ColorBlue
+	ColorPurple
+	ColorCyan
+	ColorWhite
+
+	ColorBgRed
+)
+
+type Opts struct {
+	Color ColorOpts
+}
+
+type ColorOpts struct {
+	Run         Color
+	Fail        Color
+	Pass        Color
+	Skip        Color
+	Failed      Color
+	Ok          Color
+	ErrorThrown Color
+}
+
+var ColorANSI = map[Color][]byte{
+	ColorNone:   []byte(""),
+	ColorReset:  []byte("\033[0m"),
+	ColorBlack:  []byte("\033[0;30m"),
+	ColorRed:    []byte("\033[0;31m"),
+	ColorGreen:  []byte("\033[0;32m"),
+	ColorYellow: []byte("\033[0;33m"),
+	ColorBlue:   []byte("\033[0;34m"),
+	ColorPurple: []byte("\033[0;35m"),
+	ColorCyan:   []byte("\033[0;36m"),
+	ColorWhite:  []byte("\033[0;37m"),
+
+	ColorBgRed: []byte("\033[41m"),
+}
+
+func ColorizeTests(m *testing.M, opts Opts) {
+	// default values
+	if opts.Color.Run == 0 {
+		opts.Color.Run = ColorCyan
+	}
+
+	if opts.Color.Fail == 0 {
+		opts.Color.Fail = ColorRed
+	}
+
+	if opts.Color.Pass == 0 {
+		opts.Color.Pass = ColorGreen
+	}
+
+	if opts.Color.Skip == 0 {
+		opts.Color.Skip = ColorYellow
+	}
+
+	if opts.Color.Failed == 0 {
+		opts.Color.Failed = ColorRed
+	}
+
+	if opts.Color.Ok == 0 {
+		opts.Color.Ok = ColorGreen
+	}
+
+	if opts.Color.ErrorThrown == 0 {
+		opts.Color.ErrorThrown = ColorWhite
+	}
 
 	// create a pipe
 	r, w, _ := os.Pipe()
@@ -36,10 +108,10 @@ func TestMain(m *testing.M) {
 	// Run tests
 	exitCode := m.Run()
 
-	// Close the writer end of the pipe so the reader stops at EOF
+	// close the writer end of the pipe so the reader stops at EOF
 	w.Close()
 
-	// Setup the reader
+	// setup the reader
 	reader := bufio.NewReader(r)
 
 	runMatch := []byte("=== RUN")
@@ -48,12 +120,6 @@ func TestMain(m *testing.M) {
 	skipMatch := []byte("--- SKIP")
 	passedMatch := []byte("PASS")
 	failedMatch := []byte("FAIL")
-
-	colorBlue := []byte("\033[0;36m")
-	colorRed := []byte("\033[0;31m")
-	colorGreen := []byte("\033[0;32m")
-	colorPurple := []byte("\033[0;35m")
-	colorReset := []byte("\033[0m")
 
 	runBefore := false
 	errorBefore := false
@@ -72,41 +138,43 @@ func TestMain(m *testing.M) {
 			// manage styling depending on bytes match
 			// === RUN
 			if bytes.Contains(line, runMatch) {
-				color = colorBlue
+				color = ColorANSI[opts.Color.Run]
 				tabs = true
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, true, false)
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, true, false)
 
 				// --- FAIL:
 			} else if bytes.Contains(line, failMatch) {
-				color = colorRed
+				color = ColorANSI[opts.Color.Fail]
 				tabs = true
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
 
 				// --- PASS:
 			} else if bytes.Contains(line, passMatch) {
-				color = colorGreen
+				color = ColorANSI[opts.Color.Pass]
 				tabs = true
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
 
 				// --- SKIP:
 			} else if bytes.Contains(line, skipMatch) {
-				color = colorPurple
+				color = ColorANSI[opts.Color.Skip]
 				tabs = true
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
 
 				// FAIL
 			} else if bytes.Equal(line, failedMatch) {
-				color = colorRed
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				color = ColorANSI[opts.Color.Failed]
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				stdout.Write([]byte("\n"))
 
 				// ok
 			} else if bytes.Equal(line, passedMatch) {
-				color = colorGreen
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				color = ColorANSI[opts.Color.Ok]
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, false)
+				stdout.Write([]byte("\n"))
 
 				// error thrown
 			} else {
-				addLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, true)
+				AddLineFeedBetweenErrorThrown(stdout, &runBefore, &errorBefore, false, true)
 			}
 
 			if color != nil {
@@ -120,7 +188,7 @@ func TestMain(m *testing.M) {
 			stdout.Write(line)
 
 			if color != nil {
-				stdout.Write(colorReset)
+				stdout.Write(ColorANSI[ColorReset])
 			}
 
 			stdout.Write([]byte("\n"))
@@ -136,4 +204,15 @@ func TestMain(m *testing.M) {
 	os.Stderr = stderr
 
 	os.Exit(exitCode)
+}
+
+// WARN: all tests must be in this folder, no subfolder authorized
+func TestMain(m *testing.M) {
+	os.Setenv("APP_GO_TEST", "true")
+
+	ColorizeTests(m, Opts{
+		ColorOpts{
+			Failed: ColorBgRed,
+		},
+	})
 }

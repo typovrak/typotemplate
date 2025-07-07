@@ -152,7 +152,7 @@ func NewDefaultOpts() Opts {
 				Foreground: ColorANSIForeground[ANSIForegroundCyan],
 				Background: ColorANSIBackground[ANSIBackgroundNone],
 			},
-			Title: "=== RUN  ",
+			Title: "\t=== RUN  ",
 		},
 		Fail: LineType{
 			Colors: ANSIConfig{
@@ -160,7 +160,7 @@ func NewDefaultOpts() Opts {
 				Foreground: ColorANSIForeground[ANSIForegroundRed],
 				Background: ColorANSIBackground[ANSIBackgroundNone],
 			},
-			Title: "--- FAIL:",
+			Title: "\t--- FAIL:",
 		},
 		Pass: LineType{
 			Colors: ANSIConfig{
@@ -168,7 +168,7 @@ func NewDefaultOpts() Opts {
 				Foreground: ColorANSIForeground[ANSIForegroundGreen],
 				Background: ColorANSIBackground[ANSIBackgroundNone],
 			},
-			Title: "--- PASS:",
+			Title: "\t--- PASS:",
 		},
 		Skip: LineType{
 			Colors: ANSIConfig{
@@ -176,7 +176,7 @@ func NewDefaultOpts() Opts {
 				Foreground: ColorANSIForeground[ANSIForegroundYellow],
 				Background: ColorANSIBackground[ANSIBackgroundNone],
 			},
-			Title: "--- SKIP:",
+			Title: "\t--- SKIP:",
 		},
 		Failed: LineType{
 			Colors: ANSIConfig{
@@ -206,7 +206,8 @@ func NewDefaultOpts() Opts {
 	}
 }
 
-func RunColorizeTests(m *testing.M, opts Opts) int {
+// return exitCode
+func RunTestColor(m *testing.M, opts Opts) int {
 	// create a pipe
 	r, w, _ := os.Pipe()
 
@@ -218,7 +219,6 @@ func RunColorizeTests(m *testing.M, opts Opts) int {
 	os.Stdout = w
 	os.Stderr = w
 
-	// Run tests
 	exitCode := m.Run()
 
 	// close the writer end of the pipe so the reader stops at EOF
@@ -256,28 +256,23 @@ func RunColorizeTests(m *testing.M, opts Opts) int {
 			line = bytes.TrimLeft(line, " ")
 
 			var color []byte
-			tabs := false
 
 			// manage color and style line depending on the content
 			// === RUN
 			if bytes.Contains(line, defaultTitle.Run) {
 				handleLineType(&line, opts.Run, defaultTitle.Run, &color, stdout, &errorBefore, false)
-				tabs = true
 
 				// --- FAIL:
 			} else if bytes.Contains(line, defaultTitle.Fail) {
 				handleLineType(&line, opts.Fail, defaultTitle.Fail, &color, stdout, &errorBefore, false)
-				tabs = true
 
 				// --- PASS:
 			} else if bytes.Contains(line, defaultTitle.Pass) {
 				handleLineType(&line, opts.Pass, defaultTitle.Pass, &color, stdout, &errorBefore, false)
-				tabs = true
 
 				// --- SKIP:
 			} else if bytes.Contains(line, defaultTitle.Skip) {
 				handleLineType(&line, opts.Skip, defaultTitle.Skip, &color, stdout, &errorBefore, false)
-				tabs = true
 
 				// FAIL
 			} else if bytes.Equal(line, defaultTitle.Failed) {
@@ -294,16 +289,13 @@ func RunColorizeTests(m *testing.M, opts Opts) int {
 				handleLineType(&line, opts.ErrorThrown, defaultTitle.ErrorThrown, &color, stdout, &errorBefore, true)
 			}
 
-			if tabs {
-				stdout.Write([]byte("\t"))
-			}
-
 			stdout.Write(color)
 			stdout.Write(line)
 			stdout.Write([]byte("\033[0m"))
 			stdout.Write([]byte("\n"))
 		}
 
+		// nothing to read
 		if err != nil {
 			break
 		}
@@ -313,6 +305,7 @@ func RunColorizeTests(m *testing.M, opts Opts) int {
 	os.Stdout = stdout
 	os.Stderr = stderr
 
+	// [0, 125]
 	return exitCode
 }
 
@@ -321,7 +314,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("APP_GO_TEST", "true")
 
 	opts := NewDefaultOpts()
-	exitCode := RunColorizeTests(m, opts)
+	exitCode := RunTestColor(m, opts)
 
 	os.Exit(exitCode)
 }

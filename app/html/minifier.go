@@ -20,6 +20,7 @@ const (
 	StyleTagOutside int = iota
 	StyleTagOpening
 	StyleTagInCSS
+	StyleTagInCSSValue
 	StyleTagClosing
 )
 
@@ -61,6 +62,7 @@ func Minifier(html string) string {
 		urlEncodedDoubleQuote = "%22"
 
 		// all state for managing <style></style>
+		// INFO: </style> in CSS tag is forbidden, must be escaped
 		styleTagState = StyleTagOutside
 
 		// all state for managing <script></script>
@@ -68,14 +70,16 @@ func Minifier(html string) string {
 		isScriptTagSrc           = false
 		scriptTagClosingMatchLen = 0
 
-		styleTagOpeningSuffix  = []byte("<style")
-		styleTagClosingSuffix  = []byte("</style")
+		styleTagOpeningSuffix = []byte("<style")
+		styleTagClosingSuffix = []byte("</style")
+
 		scriptTagOpeningSuffix = []byte("<script")
 		scriptTagClosingSuffix = []byte("</script")
-		hrefAttrSuffix         = []byte("href")
-		srcAttrSuffix          = []byte("src")
-		actionAttrSuffix       = []byte("action")
-		dataAttrSuffix         = []byte("data")
+
+		hrefAttrSuffix   = []byte("href")
+		srcAttrSuffix    = []byte("src")
+		actionAttrSuffix = []byte("action")
+		dataAttrSuffix   = []byte("data")
 	)
 
 	buf.Grow(len(html))
@@ -93,8 +97,8 @@ func Minifier(html string) string {
 	// TODO: benchmark
 	// TODO: tester avec vite ou webpack
 
-	// WARN: previous characters = use buf
-	// WARN: next characters = use html
+	// INFO: previous characters = use buf
+	// INFO: next characters = use html
 	for i := 0; i < len(html); i++ {
 		char = html[i]
 		bufBytes = buf.Bytes()
@@ -143,6 +147,18 @@ func Minifier(html string) string {
 			// </style
 			if bytes.HasSuffix(bufBytes, styleTagClosingSuffix) {
 				styleTagState = StyleTagClosing
+			}
+
+			// for managing </style string in CSS
+			if char == '"' {
+				styleTagState = StyleTagInCSSValue
+			}
+
+		case StyleTagInCSSValue:
+			// property: "value";
+			// end of the CSS value
+			if lastChar != '\\' && char == '"' {
+				styleTagState = StyleTagInCSS
 			}
 
 		case StyleTagClosing:

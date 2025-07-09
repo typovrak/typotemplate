@@ -1392,4 +1392,100 @@ console.log("</scaroipat");
 
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_138", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: '</style';
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: '</style';
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_139", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: '<\/style>\'';
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: '<\/style>\'';
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_140", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: '<\/style>\"';
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: '<\/style>\"';
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_141", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "<\/style>\'";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "<\/style>\'";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_142", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: '<\/style>"';
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: '<\/style>"';
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_143", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "<\/style>'";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "<\/style>'";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
 }

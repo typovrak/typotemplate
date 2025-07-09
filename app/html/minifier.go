@@ -72,6 +72,7 @@ func Minifier(html string) string {
 
 		styleTagOpeningSuffix = []byte("<style")
 		styleTagClosingSuffix = []byte("</style")
+		cssValueSeparator     byte
 
 		scriptTagOpeningSuffix = []byte("<script")
 		scriptTagClosingSuffix = []byte("</script")
@@ -150,14 +151,16 @@ func Minifier(html string) string {
 			}
 
 			// for managing </style string in CSS
-			if char == '"' {
+			if char == '"' || char == '\'' {
+				cssValueSeparator = char
 				styleTagState = StyleTagInCSSValue
 			}
 
 		case StyleTagInCSSValue:
 			// property: "value";
 			// end of the CSS value
-			if lastChar != '\\' && char == '"' {
+			if lastChar != '\\' && char == cssValueSeparator {
+				cssValueSeparator = 0
 				styleTagState = StyleTagInCSS
 			}
 

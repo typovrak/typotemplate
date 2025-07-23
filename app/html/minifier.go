@@ -2,6 +2,7 @@ package html
 
 import (
 	"bytes"
+	"fmt"
 )
 
 // INFO:
@@ -32,6 +33,8 @@ const (
 	ScriptTagClosing
 )
 
+type TupleInt [2]int
+
 // INFO: HTML comments in HTML comments are forbidden
 // INFO: only < are allowed in attribute without separator
 // INFO: \' in URL attributes with ' separators are forbidden
@@ -43,7 +46,7 @@ func Minifier(html string) string {
 		lastChar byte
 
 		bufAttrSeparator byte
-		repeatedSpaces   [2]int
+		repeatedSpaces   TupleInt
 
 		isInComment bool
 
@@ -64,11 +67,16 @@ func Minifier(html string) string {
 		// all state for managing <style></style>
 		// INFO: </style> in CSS tag is forbidden, must be escaped
 		styleTagState = StyleTagOutside
+		// writing style tag name letter turn this to: true, </ part is at: false
+		isWritingStyleTagEndName = false
 
 		// all state for managing <script></script>
+		// INFO: </script> in JS tag is forbidden, must be escaped
 		scriptTagState           = ScriptTagOutside
 		isScriptTagSrc           = false
 		scriptTagClosingMatchLen = 0
+		// writing style tag name letter turn this to: true, </ part is at: false
+		// isWritingScriptTagEndName = false
 
 		styleTagOpeningSuffix = []byte("<style")
 		styleTagClosingSuffix = []byte("</style")
@@ -85,7 +93,6 @@ func Minifier(html string) string {
 
 	buf.Grow(len(html))
 
-	// TODO: gérer les <script> <style>
 	// TODO: gérer les chevrons dans le contenu?
 	// TODO: gérer les balises auto fermante
 
@@ -156,6 +163,8 @@ func Minifier(html string) string {
 				styleTagState = StyleTagInCSSValue
 			}
 
+			startIsWritingStyleTagEndName(isBufInTag, lastChar, char, &isWritingStyleTagEndName)
+
 		case StyleTagInCSSValue:
 			// property: "value";
 			// end of the CSS value
@@ -164,7 +173,13 @@ func Minifier(html string) string {
 				styleTagState = StyleTagInCSS
 			}
 
+			startIsWritingStyleTagEndName(isBufInTag, lastChar, char, &isWritingStyleTagEndName)
+
 		case StyleTagClosing:
+			if isWritingStyleTagEndName {
+				isWritingStyleTagEndName = false
+			}
+
 			if !isBufInTag {
 				styleTagState = StyleTagOutside
 			}
@@ -187,7 +202,7 @@ func Minifier(html string) string {
 				scriptTagState = ScriptTagInJS
 
 				if isScriptTagSrc {
-					goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix)
+					goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix, html, i)
 					if goNowToNextIteration {
 						continue
 					}
@@ -195,7 +210,7 @@ func Minifier(html string) string {
 			}
 
 		} else if scriptTagState == ScriptTagInJS {
-			goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix)
+			goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix, html, i)
 			if goNowToNextIteration {
 				continue
 			}
@@ -207,7 +222,11 @@ func Minifier(html string) string {
 		}
 
 		// remove line feed, tab and carriage return
-		if styleTagState != StyleTagInCSS && scriptTagState != ScriptTagInJS && !isScriptTagSrc && (char == '\n' || char == '\t' || char == '\r') {
+		if styleTagState != StyleTagInCSS &&
+			styleTagState != StyleTagInCSSValue &&
+			scriptTagState != ScriptTagInJS &&
+			!isScriptTagSrc &&
+			(char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
 
@@ -222,7 +241,16 @@ func Minifier(html string) string {
 		if isBufInTag {
 			// remove double space in tag
 			if (lastChar == ' ' && char == ' ') || (i+1 < len(html) && char == ' ' && html[i+1] == ' ') {
-				continue
+
+				fmt.Println("isWritingStyleTagEndName:", isWritingStyleTagEndName)
+				if (styleTagState == StyleTagInCSS || styleTagState == StyleTagInCSSValue) && isWritingStyleTagEndName {
+					isWritingStyleTagEndName = false
+					isBufInTag = false
+				}
+
+				if !isWritingStyleTagEndName {
+					continue
+				}
 			}
 
 			if isBufInAttr {
@@ -285,10 +313,7 @@ func Minifier(html string) string {
 					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
 						char != ' ' && char != bufAttrSeparator {
 
-						spacesToAdd := ""
-						for i := 0; i < repeatedSpaces[0]-1; i++ {
-							spacesToAdd += " "
-						}
+						spacesToAdd := handleSpacesToAdd(repeatedSpaces)
 
 						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
 						if bufAttrSeparator == '\'' && char == '"' {
@@ -358,6 +383,35 @@ func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
 	*lastChar = value[len(value)-1]
 }
 
+// TODO: typotestcolor: mettre en place une feature pour afficher que les tests du fichier et/ou que de la ligne X à Y
+
+func handleIsValidEndScriptTag(scriptTagState *int, scriptTagClosingMatchLen *int, html string, i int) bool {
+	n := 0
+	for {
+		// manage array overflow
+		if i+n >= len(html) {
+			*scriptTagClosingMatchLen = 0
+			return false
+		}
+
+		// loop until finding a character
+		if html[i+n] == ' ' {
+			n++
+			continue
+		}
+
+		// end script tag detected
+		if html[i+n] == '>' {
+			*scriptTagState = ScriptTagClosing
+			return true
+		}
+
+		// falsy end script tag detected
+		*scriptTagClosingMatchLen = 0
+		return false
+	}
+}
+
 func handleScriptTagInJS(
 	buf *bytes.Buffer,
 	lastChar *byte,
@@ -367,8 +421,10 @@ func handleScriptTagInJS(
 	isScriptTagSrc *bool,
 	scriptTagClosingMatchLen *int,
 	scriptTagClosingSuffix []byte,
+	html string,
+	i int,
 
-	// INFO: return goNowToNextIteration for executing continue keyword
+	// INFO: return true for executing goNowToNextIteration and trigger the continue keyword
 ) bool {
 	if *isScriptTagSrc {
 
@@ -377,6 +433,12 @@ func handleScriptTagInJS(
 
 			// </script
 			if *scriptTagClosingMatchLen == len(scriptTagClosingSuffix) {
+
+				isValidEndScriptTag := handleIsValidEndScriptTag(scriptTagState, scriptTagClosingMatchLen, html, i+1)
+				if !isValidEndScriptTag {
+					return true
+				}
+
 				*isScriptTagSrc = false
 				*scriptTagState = ScriptTagClosing
 
@@ -395,7 +457,9 @@ func handleScriptTagInJS(
 
 	// </script
 	if bytes.HasSuffix(buf.Bytes(), scriptTagClosingSuffix) {
-		*scriptTagState = ScriptTagClosing
+		// verify that </script is not a string value in js
+		// no need to use the return value
+		handleIsValidEndScriptTag(scriptTagState, scriptTagClosingMatchLen, html, i)
 	}
 
 	return false
@@ -410,7 +474,7 @@ func handleHTMLTagClosing(
 	isBufInURLAttr *bool,
 	bufAttrSeparator *byte,
 
-	// INFO: return goNowToNextIteration for executing continue keyword
+	// INFO: return true for executing goNowToNextIteration and trigger the continue keyword
 ) bool {
 	if char == '>' {
 		if *bufAttrSeparator != 0 {
@@ -427,4 +491,27 @@ func handleHTMLTagClosing(
 	}
 
 	return false
+}
+
+func handleSpacesToAdd(repeatedSpaces TupleInt) string {
+	spacesToAdd := ""
+	for i := 0; i < repeatedSpaces[0]-1; i++ {
+		spacesToAdd += " "
+	}
+	return spacesToAdd
+}
+
+func startIsWritingStyleTagEndName(isBufInTag bool, lastChar byte, char byte, isWritingStyleTagEndName *bool) {
+	// actually writing "style"
+
+	fmt.Println("lastChar:", string(lastChar))
+	if isBufInTag && !*isWritingStyleTagEndName {
+		if lastChar == '\'' && char == 's' {
+			*isWritingStyleTagEndName = true
+		}
+	}
+
+	if !isBufInTag && *isWritingStyleTagEndName {
+		*isWritingStyleTagEndName = false
+	}
 }

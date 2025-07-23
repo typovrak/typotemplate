@@ -28,7 +28,6 @@ const (
 	ScriptTagOutside int = iota
 	ScriptTagOpening
 	ScriptTagInJS
-	ScriptTagClosing
 )
 
 type TupleInt [2]int
@@ -68,14 +67,11 @@ func Minifier(html string) string {
 
 		// all state for managing <script></script>
 		// INFO: </script> in JS tag is forbidden, must be escaped
-		scriptTagState           = ScriptTagOutside
-		isScriptTagSrc           = false
-		scriptTagClosingMatchLen = 0
+		scriptTagState = ScriptTagOutside
+		isScriptTagSrc = false
 
-		styleTagOpeningSuffix = []byte("<style")
-
+		styleTagOpeningSuffix  = []byte("<style")
 		scriptTagOpeningSuffix = []byte("<script")
-		scriptTagClosingSuffix = []byte("</script")
 
 		hrefAttrSuffix   = []byte("href")
 		srcAttrSuffix    = []byte("src")
@@ -157,6 +153,7 @@ func Minifier(html string) string {
 			}
 		} else if scriptTagState == ScriptTagOpening {
 			// src="x"
+			// TODO: rewrite with hasSuffix?
 			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
 				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
 				isScriptTagSrc = true
@@ -166,23 +163,15 @@ func Minifier(html string) string {
 				scriptTagState = ScriptTagInJS
 
 				if isScriptTagSrc {
-					goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix, html, i)
-					if goNowToNextIteration {
-						continue
-					}
+					// prevent adding a JS character
+					continue
 				}
 			}
 
 		} else if scriptTagState == ScriptTagInJS {
-			goNowToNextIteration := handleScriptTagInJS(&buf, &lastChar, char, &isBufInTag, &scriptTagState, &isScriptTagSrc, &scriptTagClosingMatchLen, scriptTagClosingSuffix, html, i)
-			if goNowToNextIteration {
-				continue
-			}
-
-		} else if scriptTagState == ScriptTagClosing {
-			if !isBufInTag {
-				scriptTagState = ScriptTagOutside
-			}
+			// INFO: manage all JS code here
+			handleScriptInJS(&buf, &lastChar, char, html, &i, &isBufInTag, &scriptTagState, &isScriptTagSrc)
+			continue
 		}
 
 		// remove line feed, tab and carriage return
@@ -342,86 +331,6 @@ func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
 
 // TODO: typotestcolor: mettre en place une feature pour afficher que les tests du fichier et/ou que de la ligne X à Y
 
-func handleIsValidEndScriptTag(scriptTagState *int, scriptTagClosingMatchLen *int, html string, i int) bool {
-	n := 0
-	for {
-		// manage array overflow
-		if i+n >= len(html) {
-			*scriptTagClosingMatchLen = 0
-			return false
-		}
-
-		// loop until finding a character
-		if html[i+n] == ' ' {
-			n++
-			continue
-		}
-
-		// end script tag detected
-		if html[i+n] == '>' {
-			*scriptTagState = ScriptTagClosing
-			return true
-		}
-
-		// falsy end script tag detected
-		*scriptTagClosingMatchLen = 0
-		return false
-	}
-}
-
-func handleScriptTagInJS(
-	buf *bytes.Buffer,
-	lastChar *byte,
-	char byte,
-	isBufInTag *bool,
-	scriptTagState *int,
-	isScriptTagSrc *bool,
-	scriptTagClosingMatchLen *int,
-	scriptTagClosingSuffix []byte,
-	html string,
-	i int,
-
-	// INFO: return true for executing goNowToNextIteration and trigger the continue keyword
-) bool {
-	if *isScriptTagSrc {
-
-		if scriptTagClosingSuffix[*scriptTagClosingMatchLen] == char {
-			*scriptTagClosingMatchLen++
-
-			// </script
-			if *scriptTagClosingMatchLen == len(scriptTagClosingSuffix) {
-
-				isValidEndScriptTag := handleIsValidEndScriptTag(scriptTagState, scriptTagClosingMatchLen, html, i+1)
-				if !isValidEndScriptTag {
-					return true
-				}
-
-				*isScriptTagSrc = false
-				*scriptTagState = ScriptTagClosing
-
-				*isBufInTag = true
-				// INFO: buf and lastChar are already a pointer
-				writeStrToBuf(buf, lastChar, "</script")
-			}
-		} else {
-			if char != ' ' {
-				*scriptTagClosingMatchLen = 0
-			}
-		}
-
-		return true
-	}
-
-	// </script
-	if bytes.HasSuffix(buf.Bytes(), scriptTagClosingSuffix) {
-		// verify that </script is not a string value in js
-		// no need to use the return value
-		handleIsValidEndScriptTag(scriptTagState, scriptTagClosingMatchLen, html, i)
-	}
-
-	return false
-}
-
 func handleHTMLTagClosing(
 	buf *bytes.Buffer,
 	lastChar *byte,
@@ -497,9 +406,11 @@ func handleStyleInCSS(
 
 			if matching < len(styleTagClosingSuffix) {
 				switch styleTagClosingSuffix[matching] {
+				// tag name's second letter
 				case 't':
 					isWritingTagName = true
 
+					// tag name's closer
 				case '>':
 					isWritingTagName = false
 				}
@@ -526,5 +437,93 @@ func handleStyleInCSS(
 
 // INFO: add all CSS code here
 func handleWriteCSS(buf *bytes.Buffer, lastChar *byte, char byte) {
+	writeByteToBuf(buf, lastChar, char)
+}
+
+func handleScriptInJS(
+	buf *bytes.Buffer,
+	lastChar *byte,
+	char byte,
+	html string,
+	i *int,
+	isBufInTag *bool,
+	scriptTagState *int,
+	isScriptTagSrc *bool,
+) {
+	// can't be </script>
+	if char != '<' {
+		if !*isScriptTagSrc {
+			// add JS character
+			handleWriteJS(buf, lastChar, char)
+		}
+		return
+	}
+
+	n := 0
+	matching := 0
+	scriptTagClosingSuffix := []byte("</script>")
+	isWritingTagName := false
+
+	for {
+		// manage array overflow
+		if *i+n >= len(html) {
+			break
+		}
+
+		// manage spaces
+		if html[*i+n] == ' ' {
+			// spaces are forbidden between tag name
+			if !isWritingTagName {
+				n++
+				continue
+			}
+
+			break
+		}
+
+		// not a legal </script> character
+		if !slices.Contains(scriptTagClosingSuffix[matching:], html[*i+n]) {
+			break
+		}
+
+		if html[*i+n] == scriptTagClosingSuffix[matching] {
+			matching++
+
+			if matching < len(scriptTagClosingSuffix) {
+				switch scriptTagClosingSuffix[matching] {
+				// tag name's second letter
+				case 'c':
+					isWritingTagName = true
+
+					// tag name's closer
+				case '>':
+					isWritingTagName = false
+				}
+			}
+		}
+
+		// valid </script> found
+		if matching == len(scriptTagClosingSuffix) {
+			writeStrToBuf(buf, lastChar, "</script>")
+			*isBufInTag = true
+			*scriptTagState = StyleTagOutside
+			*isScriptTagSrc = false
+
+			// for not adding a double > at the end
+			*i += n
+			return
+		}
+
+		n++
+	}
+
+	if !*isScriptTagSrc {
+		// add JS character
+		handleWriteJS(buf, lastChar, char)
+	}
+}
+
+// INFO: add all JS code here
+func handleWriteJS(buf *bytes.Buffer, lastChar *byte, char byte) {
 	writeByteToBuf(buf, lastChar, char)
 }

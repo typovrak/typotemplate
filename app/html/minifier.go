@@ -2,7 +2,7 @@ package html
 
 import (
 	"bytes"
-	"fmt"
+	"slices"
 )
 
 // INFO:
@@ -21,8 +21,6 @@ const (
 	StyleTagOutside int = iota
 	StyleTagOpening
 	StyleTagInCSS
-	StyleTagInCSSValue
-	StyleTagClosing
 )
 
 // all state for managing <script></script>
@@ -67,20 +65,14 @@ func Minifier(html string) string {
 		// all state for managing <style></style>
 		// INFO: </style> in CSS tag is forbidden, must be escaped
 		styleTagState = StyleTagOutside
-		// writing style tag name letter turn this to: true, </ part is at: false
-		isWritingStyleTagEndName = false
 
 		// all state for managing <script></script>
 		// INFO: </script> in JS tag is forbidden, must be escaped
 		scriptTagState           = ScriptTagOutside
 		isScriptTagSrc           = false
 		scriptTagClosingMatchLen = 0
-		// writing style tag name letter turn this to: true, </ part is at: false
-		// isWritingScriptTagEndName = false
 
 		styleTagOpeningSuffix = []byte("<style")
-		styleTagClosingSuffix = []byte("</style")
-		cssValueSeparator     byte
 
 		scriptTagOpeningSuffix = []byte("<script")
 		scriptTagClosingSuffix = []byte("</script")
@@ -152,37 +144,9 @@ func Minifier(html string) string {
 			}
 
 		case StyleTagInCSS:
-			// </style
-			if bytes.HasSuffix(bufBytes, styleTagClosingSuffix) {
-				styleTagState = StyleTagClosing
-			}
-
-			// for managing </style string in CSS
-			if char == '"' || char == '\'' {
-				cssValueSeparator = char
-				styleTagState = StyleTagInCSSValue
-			}
-
-			startIsWritingStyleTagEndName(isBufInTag, lastChar, char, &isWritingStyleTagEndName)
-
-		case StyleTagInCSSValue:
-			// property: "value";
-			// end of the CSS value
-			if lastChar != '\\' && char == cssValueSeparator {
-				cssValueSeparator = 0
-				styleTagState = StyleTagInCSS
-			}
-
-			startIsWritingStyleTagEndName(isBufInTag, lastChar, char, &isWritingStyleTagEndName)
-
-		case StyleTagClosing:
-			if isWritingStyleTagEndName {
-				isWritingStyleTagEndName = false
-			}
-
-			if !isBufInTag {
-				styleTagState = StyleTagOutside
-			}
+			// INFO: manage all CSS code here
+			handleStyleInCSS(&buf, &lastChar, char, html, &i, &isBufInTag, &styleTagState)
+			continue
 		}
 
 		// manage <script></script>
@@ -223,7 +187,6 @@ func Minifier(html string) string {
 
 		// remove line feed, tab and carriage return
 		if styleTagState != StyleTagInCSS &&
-			styleTagState != StyleTagInCSSValue &&
 			scriptTagState != ScriptTagInJS &&
 			!isScriptTagSrc &&
 			(char == '\n' || char == '\t' || char == '\r') {
@@ -241,16 +204,7 @@ func Minifier(html string) string {
 		if isBufInTag {
 			// remove double space in tag
 			if (lastChar == ' ' && char == ' ') || (i+1 < len(html) && char == ' ' && html[i+1] == ' ') {
-
-				fmt.Println("isWritingStyleTagEndName:", isWritingStyleTagEndName)
-				if (styleTagState == StyleTagInCSS || styleTagState == StyleTagInCSSValue) && isWritingStyleTagEndName {
-					isWritingStyleTagEndName = false
-					isBufInTag = false
-				}
-
-				if !isWritingStyleTagEndName {
-					continue
-				}
+				continue
 			}
 
 			if isBufInAttr {
@@ -313,7 +267,10 @@ func Minifier(html string) string {
 					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
 						char != ' ' && char != bufAttrSeparator {
 
-						spacesToAdd := handleSpacesToAdd(repeatedSpaces)
+						spacesToAdd := ""
+						for i := 0; i < repeatedSpaces[0]-1; i++ {
+							spacesToAdd += " "
+						}
 
 						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
 						if bufAttrSeparator == '\'' && char == '"' {
@@ -493,25 +450,81 @@ func handleHTMLTagClosing(
 	return false
 }
 
-func handleSpacesToAdd(repeatedSpaces TupleInt) string {
-	spacesToAdd := ""
-	for i := 0; i < repeatedSpaces[0]-1; i++ {
-		spacesToAdd += " "
+func handleStyleInCSS(
+	buf *bytes.Buffer,
+	lastChar *byte,
+	char byte,
+	html string,
+	i *int,
+	isBufInTag *bool,
+	styleTagState *int,
+) {
+	// can't be </style>
+	if char != '<' {
+		handleWriteCSS(buf, lastChar, char)
+		return
 	}
-	return spacesToAdd
+
+	n := 0
+	matching := 0
+	styleTagClosingSuffix := []byte("</style>")
+	isWritingTagName := false
+
+	for {
+		// manage array overflow
+		if *i+n >= len(html) {
+			break
+		}
+
+		// manage spaces
+		if html[*i+n] == ' ' {
+			// spaces are forbidden between tag name
+			if !isWritingTagName {
+				n++
+				continue
+			}
+
+			break
+		}
+
+		// not a legal </style> character
+		if !slices.Contains(styleTagClosingSuffix[matching:], html[*i+n]) {
+			break
+		}
+
+		if html[*i+n] == styleTagClosingSuffix[matching] {
+			matching++
+
+			if matching < len(styleTagClosingSuffix) {
+				switch styleTagClosingSuffix[matching] {
+				case 't':
+					isWritingTagName = true
+
+				case '>':
+					isWritingTagName = false
+				}
+			}
+		}
+
+		// valid </style> found
+		if matching == len(styleTagClosingSuffix) {
+			writeStrToBuf(buf, lastChar, "</style>")
+			*isBufInTag = true
+			*styleTagState = StyleTagOutside
+
+			// for not adding a double > at the end
+			*i += n
+			return
+		}
+
+		n++
+	}
+
+	// add CSS character
+	handleWriteCSS(buf, lastChar, char)
 }
 
-func startIsWritingStyleTagEndName(isBufInTag bool, lastChar byte, char byte, isWritingStyleTagEndName *bool) {
-	// actually writing "style"
-
-	fmt.Println("lastChar:", string(lastChar))
-	if isBufInTag && !*isWritingStyleTagEndName {
-		if lastChar == '\'' && char == 's' {
-			*isWritingStyleTagEndName = true
-		}
-	}
-
-	if !isBufInTag && *isWritingStyleTagEndName {
-		*isWritingStyleTagEndName = false
-	}
+// INFO: add all CSS code here
+func handleWriteCSS(buf *bytes.Buffer, lastChar *byte, char byte) {
+	writeByteToBuf(buf, lastChar, char)
 }

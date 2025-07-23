@@ -4,20 +4,30 @@ import (
 	"strconv"
 	"testing"
 	"typotemplate/html"
+
+	"github.com/typovrak/typotestcolor"
 )
 
 func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
 	toASCII := false
 
-	if res != expected {
-		if toASCII {
-			expected = strconv.QuoteToASCII(expected)
-			res = strconv.QuoteToASCII(res)
-		}
-
-		t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
+	if toASCII {
+		expected = strconv.QuoteToASCII(expected)
+		res = strconv.QuoteToASCII(res)
 	}
+
+	err := typotestcolor.TestDiff(expected, res, typotestcolor.TestDiffNewDefaultOpts())
+	typotestcolor.AssertNoError(t, err)
+
+	// if res != expected {
+	//	if toASCII {
+	//		expected = strconv.QuoteToASCII(expected)
+	//		res = strconv.QuoteToASCII(res)
+	//	}
+
+	//	t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
+	//}
 }
 
 func TestHTMLMinifier(t *testing.T) {

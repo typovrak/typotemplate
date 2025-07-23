@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"strconv"
 	"testing"
 	"typotemplate/html"
 
@@ -10,24 +9,8 @@ import (
 
 func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
-	toASCII := false
-
-	if toASCII {
-		expected = strconv.QuoteToASCII(expected)
-		res = strconv.QuoteToASCII(res)
-	}
-
 	err := typotestcolor.TestDiff(expected, res, typotestcolor.TestDiffNewDefaultOpts())
 	typotestcolor.AssertNoError(t, err)
-
-	// if res != expected {
-	//	if toASCII {
-	//		expected = strconv.QuoteToASCII(expected)
-	//		res = strconv.QuoteToASCII(res)
-	//	}
-
-	//	t.Errorf("expected %s (length: %d), got %s (length: %d)", expected, len(expected), res, len(res))
-	//}
 }
 
 func TestHTMLMinifier(t *testing.T) {
@@ -1094,7 +1077,7 @@ console.log("</sc  r i p   t");
 </html>
 `
 		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module>
-console.log("</script");
+console.log("</sc  r i p   t");
 		</script></body></html>`
 		validateHTMLMinifier(t, raw, expected)
 	})
@@ -1493,6 +1476,234 @@ console.log("</scaroipat");
 		expected := `<style>
 	.header {
 		content: "<\/style>'";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_144", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "t  e   s t";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "t  e   s t";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_145", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="/test.js">
+console.log("</sc  r i p   t");
+		<  / script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="/test.js"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_146", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="/test.js">
+console.log("</script");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="/test.js"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_147", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="/test.js">
+console.log("<\/sc  r i p   t>");
+		<  / script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="/test.js"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_148", func(t *testing.T) {
+		raw := `
+<!DOCTYPE html>
+<html lang="fr">
+	<head>
+		<title>Title of the document</title>
+	</head>
+	<body>
+		The content of the document......
+		<script module src="/test.js">
+console.log("<\/script>");
+		</script>
+	</body>
+</html>
+`
+		expected := `<!DOCTYPE html><html lang="fr"><head><title>Title of the document</title></head><body>The content of the document......<script module src="/test.js"></script></body></html>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_149", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "</s ty   le";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "</s ty   le";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_150", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "</s ty   le";
+	}
+
+	.footer {
+		content: "</s ty   le";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "</s ty   le";
+	}
+
+	.footer {
+		content: "</s ty   le";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_151", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "</style";
+	}
+
+	.footer {
+		content: "</style";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "</style";
+	}
+
+	.footer {
+		content: "</style";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_152", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "</s ty   le>";
+	}
+
+	.footer {
+		content: "</s ty   le>";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "</s ty   le>";
+	}
+
+	.footer {
+		content: "</s ty   le>";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_153", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "<\/style>";
+	}
+
+	.footer {
+		content: "<\/style>";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "<\/style>";
+	}
+
+	.footer {
+		content: "<\/style>";
+	}
+</style>`
+
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_154", func(t *testing.T) {
+		raw := `<style>
+	.header {
+		content: "</ s ty   le>";
+	}
+
+	.footer {
+		content: "</ s ty   le>";
+	}
+</style>`
+
+		expected := `<style>
+	.header {
+		content: "</ s ty   le>";
+	}
+
+	.footer {
+		content: "</ s ty   le>";
 	}
 </style>`
 

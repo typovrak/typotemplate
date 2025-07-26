@@ -11,6 +11,8 @@ import (
 // pas de dépendances* (sauf connecteurs type DB ou Prometheus)
 // pas de tokenisation/lexer/parsing, tout en une boucle si possible
 // pas d'IA dans l'IDE/éditeur de texte
+// pour le moment, interdit d'ajouter dans le buffer minifié des caractères qui peuvent être supprimé plus tard dans la minification
+// pas de liste d'éléments HTML valide
 
 //func Header() string {
 //	return "<a title=\"test\">test</a>"
@@ -44,8 +46,9 @@ func Minifier(html string) string {
 		char     byte
 		lastChar byte
 
-		bufAttrSeparator byte
-		repeatedSpaces   TupleInt
+		bufAttrSeparator    byte
+		repeatedSpaces      TupleInt
+		canBeAutoClosingTag bool
 
 		isInComment bool
 
@@ -109,7 +112,17 @@ func Minifier(html string) string {
 			repeatedSpaces[1] = 0
 		}
 
+		// manage falsy auto closing character: /
+		if isBufInTag && canBeAutoClosingTag && char != ' ' && char != '>' {
+			writeByteToBuf(&buf, &lastChar, '/')
+			canBeAutoClosingTag = false
+
+		} else if canBeAutoClosingTag && !isBufInTag {
+			canBeAutoClosingTag = false
+		}
+
 		// remove HTML comments <!-- -->
+		// TODO: how do i need to manage html comment in style and script, is it possible?
 		if !isInComment {
 			// <!--
 			// INFO: check if i+N < len(html) -> with N as maximal number added (this rule prevent every overflow)
@@ -154,7 +167,6 @@ func Minifier(html string) string {
 			}
 		} else if scriptTagState == ScriptTagOpening {
 			// src="x"
-			// TODO: rewrite with hasSuffix?
 			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
 				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
 				isScriptTagSrc = true
@@ -182,6 +194,8 @@ func Minifier(html string) string {
 			(char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
+
+		// TODO: tant que < n'est pas suivi d'un élément alphabetique, ceci n'est pas un élément ouvrant HTML
 
 		// start HTML tag
 		// INFO: < and > are already handled by the script switch case
@@ -325,6 +339,17 @@ func Minifier(html string) string {
 				// handle > character
 				goNowToNextIteration := handleHTMLTagClosing(&buf, &lastChar, char, &isBufInTag, &isBufInAttr, &isBufInURLAttr, &bufAttrSeparator)
 				if goNowToNextIteration {
+					continue
+				}
+
+				// handle auto closing HTML tags
+				if char == '/' && bufLen > 1 && bufBytes[bufLen-1] != '<' {
+					canBeAutoClosingTag = true
+					continue
+				}
+
+				// handle useless space added at the end of an auto closing tag
+				if char == ' ' && i+1 < len(html) && (html[i+1] == ' ' || html[i+1] == '/') {
 					continue
 				}
 			}

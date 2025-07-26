@@ -12,6 +12,7 @@ import (
 // pas de tokenisation/lexer/parsing, tout en une boucle si possible
 // pas d'IA dans l'IDE/éditeur de texte
 // pour le moment, interdit d'ajouter dans le buffer minifié des caractères qui peuvent être supprimé plus tard dans la minification
+// pas de liste d'éléments HTML valide
 
 //func Header() string {
 //	return "<a title=\"test\">test</a>"
@@ -112,7 +113,7 @@ func Minifier(html string) string {
 		}
 
 		// manage falsy auto closing character: /
-		if canBeAutoClosingTag && char != ' ' && char != '>' {
+		if isBufInTag && canBeAutoClosingTag && char != ' ' && char != '>' {
 			writeByteToBuf(&buf, &lastChar, '/')
 			canBeAutoClosingTag = false
 
@@ -166,7 +167,6 @@ func Minifier(html string) string {
 			}
 		} else if scriptTagState == ScriptTagOpening {
 			// src="x"
-			// TODO: rewrite with hasSuffix?
 			if bufLen > 6 && bufBytes[bufLen-6] == 's' && bufBytes[bufLen-5] == 'r' && bufBytes[bufLen-4] == 'c' &&
 				bufBytes[bufLen-3] == '=' && bufBytes[bufLen-2] == '"' && bufBytes[bufLen-1] != ' ' && bufBytes[bufLen-1] != '"' {
 				isScriptTagSrc = true
@@ -194,6 +194,8 @@ func Minifier(html string) string {
 			(char == '\n' || char == '\t' || char == '\r') {
 			continue
 		}
+
+		// TODO: tant que < n'est pas suivi d'un élément alphabetique, ceci n'est pas un élément ouvrant HTML
 
 		// start HTML tag
 		// INFO: < and > are already handled by the script switch case

@@ -1919,4 +1919,100 @@ console.log("<\/script>");
 		expected := "<a>   &gt;   </a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	t.Run("minifier_185", func(t *testing.T) {
+		raw := "<a><my-comp></a>"
+		expected := "<a><my-comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_186", func(t *testing.T) {
+		raw := "<a><my.comp></a>"
+		expected := "<a><my.comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_187", func(t *testing.T) {
+		raw := "<a><my_comp></a>"
+		expected := "<a><my_comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_188", func(t *testing.T) {
+		raw := "<a><mycomp></a>"
+		expected := "<a><mycomp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_189", func(t *testing.T) {
+		raw := "<a>< -my-comp></a>"
+		expected := "<a>< -my-comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_190", func(t *testing.T) {
+		raw := "<a>< _my-comp></a>"
+		expected := "<a>< _my-comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_191", func(t *testing.T) {
+		raw := "<a>< 6_my-comp></a>"
+		expected := "<a>< 6_my-comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_192", func(t *testing.T) {
+		raw := "<a> < !_my-comp></a>"
+		expected := "<a> < !_my-comp></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_193", func(t *testing.T) {
+		raw := `<a><mycomp>
+		</a>`
+		expected := `<a><mycomp></a>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_194", func(t *testing.T) {
+		raw := `<a><_mycomp>
+		</a>`
+		expected := `<a><_mycomp>
+		</a>`
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_195", func(t *testing.T) {
+		raw := "<a> < my-comp > </a>"
+		expected := "<a> <my-comp> </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_196", func(t *testing.T) {
+		raw := "<a>  <  my.comp  >  </a>"
+		expected := "<a>  <my.comp>  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_197", func(t *testing.T) {
+		raw := "<a>< my_comp>   </a>"
+		expected := "<a><my_comp>   </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_198", func(t *testing.T) {
+		raw := "<a> < -my-comp   >  </a>"
+		expected := "<a> < -my-comp   >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_199", func(t *testing.T) {
+		raw := "<a> < 5my-comp  <div> <mycomp> >  </a>"
+		expected := "<a> < 5my-comp  <div> <mycomp> >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	// TODO: </ 6test >
+	// TODO: test with tabs and returns in tags
 }

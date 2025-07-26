@@ -36,6 +36,8 @@ type TupleInt [2]int
 // INFO: only < are allowed in attribute without separator
 // INFO: \' in URL attributes with ' separators are forbidden
 // INFO: don't touch to href, href= href="" because this gives different and inconsistent output in JS
+// INFO: auto closing tags can be attribute values, chrome doesn't render />, only >: <img src=/> will be <img src="/">
+// INFO: > is considered  as a closing HTML tag if no separator is defined: <a href= > ></a> will be <a href> ></a>
 func Minifier(html string) string {
 	var (
 		buf      bytes.Buffer
@@ -88,7 +90,6 @@ func Minifier(html string) string {
 	// TODO: retirer les espaces entre les balises html ou pas si aucun texte?
 
 	// TODO: tout paramétrer en bool
-	// TODO: mettre des couleurs dans les tests (rouge et vert)
 
 	// TODO: benchmark
 	// TODO: tester avec vite ou webpack
@@ -199,6 +200,7 @@ func Minifier(html string) string {
 			if isBufInAttr {
 				if bufAttrSeparator == 0 {
 					// attribute separator not defined
+					// INFO: attribute value's can be separate by spaces
 					if char == ' ' {
 						continue
 					}
@@ -207,12 +209,21 @@ func Minifier(html string) string {
 					if char == '\'' || char == '"' {
 						bufAttrSeparator = char
 						char = '"'
+						writeByteToBuf(&buf, &lastChar, '=')
 						writeByteToBuf(&buf, &lastChar, char)
 						continue
 
 					}
 
+					// > are not allowed without proper separators
+					if char == '>' {
+						isBufInAttr = false
+						writeByteToBuf(&buf, &lastChar, char)
+						continue
+					}
+
 					bufAttrSeparator = ' '
+					writeByteToBuf(&buf, &lastChar, '=')
 					writeStrToBuf(&buf, &lastChar, "\""+string(char))
 					continue
 				}
@@ -282,6 +293,11 @@ func Minifier(html string) string {
 
 				// attribute value declaration
 			} else if char == '=' {
+				// > can't be an attribute value's without proper separators like ' and "
+				if i+1 < len(html) && html[i+1] == '>' {
+					continue
+				}
+
 				// URL in href, src, action, data attributes
 				if bytes.HasSuffix(bufBytes, hrefAttrSuffix) || bytes.HasSuffix(bufBytes, srcAttrSuffix) ||
 					bytes.HasSuffix(bufBytes, actionAttrSuffix) || bytes.HasSuffix(bufBytes, dataAttrSuffix) {
@@ -290,7 +306,8 @@ func Minifier(html string) string {
 				}
 
 				isBufInAttr = true
-				writeByteToBuf(&buf, &lastChar, char)
+				// TEST:
+				// writeByteToBuf(&buf, &lastChar, char)
 				continue
 
 				// !isBufInAttr

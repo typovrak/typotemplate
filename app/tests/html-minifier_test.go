@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 	"typotemplate/html"
 
@@ -10,6 +11,11 @@ import (
 func validateHTMLMinifier(t *testing.T, raw string, expected string) {
 	res := html.Minifier(raw)
 	err := typotestcolor.TestDiff(expected, res, typotestcolor.TestDiffNewDefaultOpts())
+	// add raw value
+	if err != nil {
+		err = fmt.Errorf("%sraw (length: %d): %s", err, len(raw), raw)
+	}
+
 	typotestcolor.AssertNoError(t, err)
 }
 
@@ -1124,37 +1130,61 @@ console.log("</scaroipat");
 
 	t.Run("minifier_99", func(t *testing.T) {
 		raw := "<a title=>></a>"
-		expected := "<a title=\">\"></a>"
+		expected := "<a title>></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_100", func(t *testing.T) {
 		raw := "<a href=>></a>"
-		expected := "<a href=\">\"></a>"
+		expected := "<a href>></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_101", func(t *testing.T) {
 		raw := "<a title=> ></a>"
-		expected := "<a title=\">\"></a>"
+		expected := "<a title> ></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_102", func(t *testing.T) {
 		raw := "<a href=> ></a>"
-		expected := "<a href=\">\"></a>"
+		expected := "<a href> ></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_103", func(t *testing.T) {
 		raw := "<a title=>  ></a>"
-		expected := "<a title=\">\"></a>"
+		expected := "<a title>  ></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_104", func(t *testing.T) {
 		raw := "<a href=>  ></a>"
-		expected := "<a href=\">\"></a>"
+		expected := "<a href>  ></a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_99", func(t *testing.T) {
+		raw := "<a title=>  >  </a>"
+		expected := "<a title>  >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_100", func(t *testing.T) {
+		raw := "<a href=>  >  </a>"
+		expected := "<a href>  >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_99", func(t *testing.T) {
+		raw := "<a title=>  > </a>"
+		expected := "<a title>  > </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_100", func(t *testing.T) {
+		raw := "<a href=>  > </a>"
+		expected := "<a href>  > </a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
@@ -1166,19 +1196,19 @@ console.log("</scaroipat");
 
 	t.Run("minifier_106", func(t *testing.T) {
 		raw := "<a href= ></a>"
-		expected := "<a href=></a>"
+		expected := "<a href></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_107", func(t *testing.T) {
 		raw := "<a href=></a>"
-		expected := "<a href=></a>"
+		expected := "<a href></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_108", func(t *testing.T) {
 		raw := "<a href=  ></a>"
-		expected := "<a href=></a>"
+		expected := "<a href></a>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
@@ -1214,43 +1244,43 @@ console.log("</scaroipat");
 
 	t.Run("minifier_114", func(t *testing.T) {
 		raw := "<img src=/>   test"
-		expected := "<img src=/>   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_115", func(t *testing.T) {
 		raw := "<img src= />   test"
-		expected := "<img src= />   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_116", func(t *testing.T) {
 		raw := "<img src=  />   test"
-		expected := "<img src=  />   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_117", func(t *testing.T) {
 		raw := "< img src=  />   test"
-		expected := "< img src=  />   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_118", func(t *testing.T) {
 		raw := "<  img src=  />   test"
-		expected := "<  img src=  />   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_119", func(t *testing.T) {
 		raw := "<img src=  / >   test"
-		expected := "<img src=  / >   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_120", func(t *testing.T) {
 		raw := "<img src=  /  >   test"
-		expected := "<img src=  /  >   test"
+		expected := "<img src=\"/\">   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
@@ -1707,6 +1737,66 @@ console.log("<\/script>");
 	}
 </style>`
 
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_155", func(t *testing.T) {
+		raw := "<img/>"
+		expected := "<img>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_156", func(t *testing.T) {
+		raw := "< img/>"
+		expected := "<img>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_157", func(t *testing.T) {
+		raw := "<  img/>"
+		expected := "<img>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_158", func(t *testing.T) {
+		raw := "<  img / >"
+		expected := "<img>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_159", func(t *testing.T) {
+		raw := "<  img  /  >"
+		expected := "<img>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_160", func(t *testing.T) {
+		raw := "<div/>"
+		expected := "<div>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_161", func(t *testing.T) {
+		raw := "< div/>"
+		expected := "<div>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_162", func(t *testing.T) {
+		raw := "<  div/>"
+		expected := "<div>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_163", func(t *testing.T) {
+		raw := "<  div / >"
+		expected := "<div>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
+	t.Run("minifier_164", func(t *testing.T) {
+		raw := "<  div  /  >"
+		expected := "<div>"
 		validateHTMLMinifier(t, raw, expected)
 	})
 }

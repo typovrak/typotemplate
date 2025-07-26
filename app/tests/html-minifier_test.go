@@ -1232,13 +1232,13 @@ console.log("</scaroipat");
 
 	t.Run("minifier_112", func(t *testing.T) {
 		raw := "<img/>   test"
-		expected := "<img/>   test"
+		expected := "<img>   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
 	t.Run("minifier_113", func(t *testing.T) {
 		raw := "<img src/>   test"
-		expected := "<img src/>   test"
+		expected := "<img src>   test"
 		validateHTMLMinifier(t, raw, expected)
 	})
 
@@ -1799,4 +1799,7 @@ console.log("<\/script>");
 		expected := "<div>"
 		validateHTMLMinifier(t, raw, expected)
 	})
+
+	// TODO: <a href=<></a>
+	// TODO: <img title= test / >
 }

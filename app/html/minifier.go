@@ -203,14 +203,42 @@ func Minifier(html string) string {
 		// start HTML tag
 		// INFO: < and > are already handled by the script switch case
 		if char == '<' && !isBufInTag {
-			if char == '<' {
-				// TODO: for i loop
+			// TODO: for i loop for knowing if a HTML tag is valid or not
 
-				isBufInTag = true
-				writeByteToBuf(&buf, &lastChar, char)
-				continue
+			// manage valid HTML tag name
+			j := 1
+			tagLen := 0
 
+			// TODO: how to use continue, break and so one in a for inside another for loop
+
+			for {
+				currentChar := html[i+j]
+
+				// first tag character
+				if tagLen == 0 {
+					// invalid tag start
+					if char != ' ' && !isLetter(currentChar) {
+						// content
+						writeStrToBuf(&buf, &lastChar, html[i:i+j])
+						i = i + j
+						continue
+					}
+
+					// TODO:
+				}
+
+				// followed tag character
+				if isValidHTMLTagChar(currentChar) {
+					j++
+				}
+
+				// not valid follow tag character
+				// TODO:
 			}
+
+			isBufInTag = true
+			writeByteToBuf(&buf, &lastChar, char)
+			continue
 		}
 
 		if isBufInTag {

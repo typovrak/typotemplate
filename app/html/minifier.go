@@ -40,6 +40,14 @@ type TupleInt [2]int
 // INFO: don't touch to href, href= href="" because this gives different and inconsistent output in JS
 // INFO: auto closing tags can be attribute values, chrome doesn't render />, only >: <img src=/> will be <img src="/">
 // INFO: > is considered  as a closing HTML tag if no separator is defined: <a href= > ></a> will be <a href> ></a>
+// INFO: a HTML tag can be declared if:
+//   - start with a letter
+//   - followed by letters, numbers, periods or hyphens
+//   - 72 characters length max
+//   - not case sensitive: a = A
+//   - < and the tag name must be joined but in my case, i support < a, not only <a
+//   - (_ are supported in chromium, tested with codepen so we will support it)
+
 func Minifier(html string) string {
 	var (
 		buf      bytes.Buffer
@@ -87,13 +95,8 @@ func Minifier(html string) string {
 	buf.Grow(len(html))
 
 	// TODO: gérer les chevrons dans le contenu?
-	// TODO: gérer les balises auto fermante
-
-	// TODO: vu que je retire tous les \n etc, est-ce que je garde les trailing space du contenu ? les doubles espaces ?
-	// TODO: retirer les espaces entre les balises html ou pas si aucun texte?
 
 	// TODO: tout paramétrer en bool
-
 	// TODO: benchmark
 	// TODO: tester avec vite ou webpack
 
@@ -200,9 +203,14 @@ func Minifier(html string) string {
 		// start HTML tag
 		// INFO: < and > are already handled by the script switch case
 		if char == '<' && !isBufInTag {
-			isBufInTag = true
-			writeByteToBuf(&buf, &lastChar, char)
-			continue
+			if char == '<' {
+				// TODO: for i loop
+
+				isBufInTag = true
+				writeByteToBuf(&buf, &lastChar, char)
+				continue
+
+			}
 		}
 
 		if isBufInTag {
@@ -281,10 +289,7 @@ func Minifier(html string) string {
 					if isBufInURLAttr && repeatedSpaces[0] > 1 && bufLen > 1 && bufBytes[bufLen-1] != '"' &&
 						char != ' ' && char != bufAttrSeparator {
 
-						spacesToAdd := ""
-						for i := 0; i < repeatedSpaces[0]-1; i++ {
-							spacesToAdd += " "
-						}
+						spacesToAdd := addRepeatedSpaces(repeatedSpaces)
 
 						// double quotes in URLs needs to be URL encoded to work and not close the attribute value
 						if bufAttrSeparator == '\'' && char == '"' {
@@ -331,8 +336,7 @@ func Minifier(html string) string {
 					continue
 				}
 
-				// remove space at HTML tag end
-				if i+1 < len(html) && char == ' ' && html[i+1] == '>' {
+				if removeSpaceAtHTMLTagEnd(html, char, i) {
 					continue
 				}
 
@@ -367,6 +371,10 @@ func writeByteToBuf(buf *bytes.Buffer, lastChar *byte, value byte) {
 }
 
 func writeStrToBuf(buf *bytes.Buffer, lastChar *byte, value string) {
+	if len(value) <= 0 {
+		return
+	}
+
 	buf.WriteString(value)
 	*lastChar = value[len(value)-1]
 }
@@ -568,4 +576,41 @@ func handleScriptInJS(
 // INFO: add all JS code here
 func handleWriteJS(buf *bytes.Buffer, lastChar *byte, char byte) {
 	writeByteToBuf(buf, lastChar, char)
+}
+
+func isLetter(char byte) bool {
+	if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') {
+		return true
+	}
+
+	return false
+}
+
+func isValidHTMLTagChar(char byte) bool {
+	// INFO: support letters, uppercases, numbers and . _ -
+	if isLetter(char) ||
+		(char >= '0' && char <= '9') ||
+		char == '_' || char == '.' || char == '-' {
+		return true
+	}
+
+	return false
+}
+
+func removeSpaceAtHTMLTagEnd(html string, char byte, i int) bool {
+	if i+1 < len(html) && char == ' ' && html[i+1] == '>' {
+		return true
+	}
+
+	return false
+}
+
+func addRepeatedSpaces(repeatedSpaces [2]int) string {
+	spacesToAdd := ""
+
+	for i := 0; i < repeatedSpaces[0]-1; i++ {
+		spacesToAdd += " "
+	}
+
+	return spacesToAdd
 }

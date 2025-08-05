@@ -2013,6 +2013,13 @@ console.log("<\/script>");
 		validateHTMLMinifier(t, raw, expected)
 	})
 
+	t.Run("minifier_200", func(t *testing.T) {
+		raw := "<a> < my-comp  <div> <mycomp> >  </a>"
+		expected := "<a> < my-comp  <div> <mycomp> >  </a>"
+		validateHTMLMinifier(t, raw, expected)
+	})
+
 	// TODO: </ 6test >
 	// TODO: test with tabs and returns in tags
+	// TODO: tester mais cette fois ci avec les balises fermantes
 }
